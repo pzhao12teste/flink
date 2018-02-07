@@ -47,7 +47,7 @@ public class ExecutionGraphDeploymentWithBlobCacheTest extends ExecutionGraphDep
 		blobWriter = blobServer;
 
 		InetSocketAddress serverAddress = new InetSocketAddress("localhost", blobServer.getPort());
-		blobCache = new PermanentBlobCache(config, new VoidBlobStore(), serverAddress);
+		blobCache = new PermanentBlobCache(serverAddress, config, new VoidBlobStore());
 	}
 
 	@After

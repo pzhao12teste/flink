@@ -886,7 +886,7 @@ public class CliFrontend {
 	 * Internal interface to encapsulate cluster actions which are executed via
 	 * the {@link ClusterClient}.
 	 *
-	 * @param <T> type of the cluster id
+	 * @param <T> tyoe pf the cluster id
 	 */
 	@FunctionalInterface
 	private interface ClusterAction<T> {
@@ -1072,11 +1072,8 @@ public class CliFrontend {
 			LOG.warn("Could not load CLI class {}.", flinkYarnSessionCLI, e);
 		}
 
-		if (configuration.getString(CoreOptions.MODE).equalsIgnoreCase(CoreOptions.FLIP6_MODE)) {
-			customCommandLines.add(new Flip6DefaultCLI(configuration));
-		} else {
-			customCommandLines.add(new DefaultCLI(configuration));
-		}
+		customCommandLines.add(new Flip6DefaultCLI(configuration));
+		customCommandLines.add(new DefaultCLI(configuration));
 
 		return customCommandLines;
 	}

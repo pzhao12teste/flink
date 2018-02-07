@@ -30,19 +30,16 @@ import java.util.ArrayDeque;
 
 import static org.apache.flink.runtime.io.network.buffer.BufferBuilderTestUtils.createBufferBuilder;
 
-/**
- * Tests for the {@link SpillingAdaptiveSpanningRecordDeserializer} and {@link AdaptiveSpanningRecordDeserializer}.
- */
 public class SpanningRecordSerializationTest {
 
 	@Test
 	public void testIntRecordsSpanningMultipleSegments() {
-		final int segmentSize = 1;
-		final int numValues = 10;
+		final int SEGMENT_SIZE = 1;
+		final int NUM_VALUES = 10;
 
 		try {
-			testNonSpillingDeserializer(Util.randomRecords(numValues, SerializationTestTypeFactory.INT), segmentSize);
-			testSpillingDeserializer(Util.randomRecords(numValues, SerializationTestTypeFactory.INT), segmentSize);
+			testNonSpillingDeserializer(Util.randomRecords(NUM_VALUES, SerializationTestTypeFactory.INT), SEGMENT_SIZE);
+			testSpillingDeserializer(Util.randomRecords(NUM_VALUES, SerializationTestTypeFactory.INT), SEGMENT_SIZE);
 		}
 		catch (Exception e) {
 			e.printStackTrace();
@@ -52,12 +49,12 @@ public class SpanningRecordSerializationTest {
 
 	@Test
 	public void testIntRecordsWithAlignedBuffers () {
-		final int segmentSize = 64;
-		final int numValues = 64;
+		final int SEGMENT_SIZE = 64;
+		final int NUM_VALUES = 64;
 
 		try {
-			testNonSpillingDeserializer(Util.randomRecords(numValues, SerializationTestTypeFactory.INT), segmentSize);
-			testSpillingDeserializer(Util.randomRecords(numValues, SerializationTestTypeFactory.INT), segmentSize);
+			testNonSpillingDeserializer(Util.randomRecords(NUM_VALUES, SerializationTestTypeFactory.INT), SEGMENT_SIZE);
+			testSpillingDeserializer(Util.randomRecords(NUM_VALUES, SerializationTestTypeFactory.INT), SEGMENT_SIZE);
 		}
 		catch (Exception e) {
 			e.printStackTrace();
@@ -67,12 +64,12 @@ public class SpanningRecordSerializationTest {
 
 	@Test
 	public void testIntRecordsWithUnalignedBuffers () {
-		final int segmentSize = 31;
-		final int numValues = 248;
+		final int SEGMENT_SIZE = 31;
+		final int NUM_VALUES = 248;
 
 		try {
-			testNonSpillingDeserializer(Util.randomRecords(numValues, SerializationTestTypeFactory.INT), segmentSize);
-			testSpillingDeserializer(Util.randomRecords(numValues, SerializationTestTypeFactory.INT), segmentSize);
+			testNonSpillingDeserializer(Util.randomRecords(NUM_VALUES, SerializationTestTypeFactory.INT), SEGMENT_SIZE);
+			testSpillingDeserializer(Util.randomRecords(NUM_VALUES, SerializationTestTypeFactory.INT), SEGMENT_SIZE);
 		}
 		catch (Exception e) {
 			e.printStackTrace();
@@ -81,13 +78,13 @@ public class SpanningRecordSerializationTest {
 	}
 
 	@Test
-	public void testRandomRecords () {
-		final int segmentSize = 127;
-		final int numValues = 10000;
+	 public void testRandomRecords () {
+		final int SEGMENT_SIZE = 127;
+		final int NUM_VALUES = 10000;
 
 		try {
-			testNonSpillingDeserializer(Util.randomRecords(numValues), segmentSize);
-			testSpillingDeserializer(Util.randomRecords(numValues), segmentSize);
+			testNonSpillingDeserializer(Util.randomRecords(NUM_VALUES), SEGMENT_SIZE);
+			testSpillingDeserializer(Util.randomRecords(NUM_VALUES), SEGMENT_SIZE);
 		}
 		catch (Exception e) {
 			e.printStackTrace();
@@ -98,37 +95,38 @@ public class SpanningRecordSerializationTest {
 	// -----------------------------------------------------------------------------------------------------------------
 
 	private void testNonSpillingDeserializer(Util.MockRecords records, int segmentSize) throws Exception {
-		RecordSerializer<SerializationTestType> serializer = new SpanningRecordSerializer<>();
-		RecordDeserializer<SerializationTestType> deserializer = new AdaptiveSpanningRecordDeserializer<>();
-
+		RecordSerializer<SerializationTestType> serializer = new SpanningRecordSerializer<SerializationTestType>();
+		RecordDeserializer<SerializationTestType> deserializer = new AdaptiveSpanningRecordDeserializer<SerializationTestType>();
+		
 		test(records, segmentSize, serializer, deserializer);
 	}
-
+	
 	private void testSpillingDeserializer(Util.MockRecords records, int segmentSize) throws Exception {
-		RecordSerializer<SerializationTestType> serializer = new SpanningRecordSerializer<>();
-		RecordDeserializer<SerializationTestType> deserializer =
-				new SpillingAdaptiveSpanningRecordDeserializer<>(
+		RecordSerializer<SerializationTestType> serializer = new SpanningRecordSerializer<SerializationTestType>();
+		RecordDeserializer<SerializationTestType> deserializer = 
+				new SpillingAdaptiveSpanningRecordDeserializer<SerializationTestType>(
 						new String[] { System.getProperty("java.io.tmpdir") });
-
+		
 		test(records, segmentSize, serializer, deserializer);
 	}
-
+	
 	/**
 	 * Iterates over the provided records and tests whether {@link SpanningRecordSerializer} and {@link AdaptiveSpanningRecordDeserializer}
 	 * interact as expected.
-	 *
-	 * <p>Only a single {@link MemorySegment} will be allocated.
+	 * <p>
+	 * Only a single {@link MemorySegment} will be allocated.
 	 *
 	 * @param records records to test
 	 * @param segmentSize size for the {@link MemorySegment}
 	 */
-	private void test(Util.MockRecords records, int segmentSize,
+	private void test(Util.MockRecords records, int segmentSize, 
 			RecordSerializer<SerializationTestType> serializer,
-			RecordDeserializer<SerializationTestType> deserializer) throws Exception {
+			RecordDeserializer<SerializationTestType> deserializer)
+		throws Exception
+	{
+		final int SERIALIZATION_OVERHEAD = 4; // length encoding
 
-		final int serializationOverhead = 4; // length encoding
-
-		final ArrayDeque<SerializationTestType> serializedRecords = new ArrayDeque<>();
+		final ArrayDeque<SerializationTestType> serializedRecords = new ArrayDeque<SerializationTestType>();
 
 		// -------------------------------------------------------------------------------------------------------------
 
@@ -141,7 +139,7 @@ public class SpanningRecordSerializationTest {
 			serializedRecords.add(record);
 
 			numRecords++;
-			numBytes += record.length() + serializationOverhead;
+			numBytes += record.length() + SERIALIZATION_OVERHEAD;
 
 			// serialize record
 			if (serializer.addRecord(record).isFullBuffer()) {
@@ -164,6 +162,9 @@ public class SpanningRecordSerializationTest {
 				while (serializer.setNextBufferBuilder(createBufferBuilder(segmentSize)).isFullBuffer()) {
 					deserializer.setNextMemorySegment(serializer.getCurrentBuffer().getMemorySegment(), segmentSize);
 				}
+
+
+
 			}
 		}
 
@@ -182,6 +183,7 @@ public class SpanningRecordSerializationTest {
 			Assert.assertEquals(expected, actual);
 			numRecords--;
 		}
+
 
 		// assert that all records have been serialized and deserialized
 		Assert.assertEquals(0, numRecords);

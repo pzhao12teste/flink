@@ -21,13 +21,11 @@ package org.apache.flink.runtime.taskexecutor;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.configuration.Configuration;
-import org.apache.flink.runtime.blob.BlobCacheService;
 import org.apache.flink.runtime.broadcast.BroadcastVariableManager;
 import org.apache.flink.runtime.clusterframework.FlinkResourceManager;
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
-import org.apache.flink.runtime.entrypoint.ClusterInformation;
 import org.apache.flink.runtime.filecache.FileCache;
 import org.apache.flink.runtime.heartbeat.HeartbeatServices;
 import org.apache.flink.runtime.highavailability.TestingHighAvailabilityServices;
@@ -155,7 +153,6 @@ public class TaskExecutorITCase extends TestLogger {
 			slotManager,
 			metricRegistry,
 			jobLeaderIdService,
-			new ClusterInformation("localhost", 1234),
 			testingFatalErrorHandler);
 
 		TaskExecutor taskExecutor = new TaskExecutor(
@@ -171,10 +168,6 @@ public class TaskExecutorITCase extends TestLogger {
 			taskManagerMetricGroup,
 			broadcastVariableManager,
 			fileCache,
-			new BlobCacheService(
-				configuration,
-				testingHAServices.createBlobStore(),
-				null),
 			taskSlotTable,
 			jobManagerTable,
 			jobLeaderService,
@@ -183,7 +176,7 @@ public class TaskExecutorITCase extends TestLogger {
 		JobMasterGateway jmGateway = mock(JobMasterGateway.class);
 
 		when(jmGateway.registerTaskManager(any(String.class), any(TaskManagerLocation.class), any(Time.class)))
-			.thenReturn(CompletableFuture.completedFuture(new JMTMRegistrationSuccess(taskManagerResourceId)));
+			.thenReturn(CompletableFuture.completedFuture(new JMTMRegistrationSuccess(taskManagerResourceId, 1234)));
 		when(jmGateway.getHostname()).thenReturn(jmAddress);
 		when(jmGateway.offerSlots(
 			eq(taskManagerResourceId),

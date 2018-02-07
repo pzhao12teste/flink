@@ -20,7 +20,6 @@ package org.apache.flink.runtime.resourcemanager;
 
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
-import org.apache.flink.runtime.entrypoint.ClusterInformation;
 import org.apache.flink.runtime.heartbeat.HeartbeatServices;
 import org.apache.flink.runtime.highavailability.HighAvailabilityServices;
 import org.apache.flink.runtime.metrics.MetricRegistry;
@@ -56,8 +55,7 @@ public class ResourceManagerRunner implements FatalErrorHandler {
 			final RpcService rpcService,
 			final HighAvailabilityServices highAvailabilityServices,
 			final HeartbeatServices heartbeatServices,
-			final MetricRegistry metricRegistry,
-			final ClusterInformation clusterInformation) throws Exception {
+			final MetricRegistry metricRegistry) throws Exception {
 
 		Preconditions.checkNotNull(resourceId);
 		Preconditions.checkNotNull(configuration);
@@ -85,7 +83,6 @@ public class ResourceManagerRunner implements FatalErrorHandler {
 			resourceManagerRuntimeServices.getSlotManager(),
 			metricRegistry,
 			resourceManagerRuntimeServices.getJobLeaderIdService(),
-			clusterInformation,
 			this);
 	}
 

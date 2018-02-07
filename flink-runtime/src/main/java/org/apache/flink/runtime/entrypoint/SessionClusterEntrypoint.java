@@ -24,8 +24,6 @@ import org.apache.flink.configuration.ConfigurationUtils;
 import org.apache.flink.configuration.JobManagerOptions;
 import org.apache.flink.configuration.WebOptions;
 import org.apache.flink.runtime.blob.BlobServer;
-import org.apache.flink.runtime.blob.TransientBlobCache;
-import org.apache.flink.runtime.blob.TransientBlobService;
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import org.apache.flink.runtime.concurrent.ScheduledExecutor;
 import org.apache.flink.runtime.dispatcher.ArchivedExecutionGraphStore;
@@ -63,7 +61,6 @@ import javax.annotation.Nullable;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.util.concurrent.Executor;
 
 /**
@@ -82,8 +79,6 @@ public abstract class SessionClusterEntrypoint extends ClusterEntrypoint {
 	private DispatcherRestEndpoint dispatcherRestEndpoint;
 
 	private ArchivedExecutionGraphStore archivedExecutionGraphStore;
-
-	private TransientBlobCache transientBlobCache;
 
 	public SessionClusterEntrypoint(Configuration configuration) {
 		super(configuration);
@@ -122,19 +117,10 @@ public abstract class SessionClusterEntrypoint extends ClusterEntrypoint {
 		final ActorSystem actorSystem = ((AkkaRpcService) rpcService).getActorSystem();
 		final Time timeout = Time.milliseconds(configuration.getLong(WebOptions.TIMEOUT));
 
-		final ClusterInformation clusterInformation = new ClusterInformation(
-			rpcService.getAddress(),
-			blobServer.getPort());
-
-		transientBlobCache = new TransientBlobCache(
-			configuration,
-			new InetSocketAddress(clusterInformation.getBlobServerHostname(), clusterInformation.getBlobServerPort()));
-
 		dispatcherRestEndpoint = createDispatcherRestEndpoint(
 			configuration,
 			dispatcherGatewayRetriever,
 			resourceManagerGatewayRetriever,
-			transientBlobCache,
 			rpcService.getExecutor(),
 			new AkkaQueryServiceRetriever(actorSystem, timeout),
 			highAvailabilityServices.getWebMonitorLeaderElectionService());
@@ -150,7 +136,6 @@ public abstract class SessionClusterEntrypoint extends ClusterEntrypoint {
 			heartbeatServices,
 			metricRegistry,
 			this,
-			clusterInformation,
 			dispatcherRestEndpoint.getRestAddress());
 
 		dispatcher = createDispatcher(
@@ -238,14 +223,6 @@ public abstract class SessionClusterEntrypoint extends ClusterEntrypoint {
 			}
 		}
 
-		if (transientBlobCache != null) {
-			try {
-				transientBlobCache.close();
-			} catch (Throwable t) {
-				exception = ExceptionUtils.firstOrSuppressed(t, exception);
-			}
-		}
-
 		if (exception != null) {
 			throw new FlinkException("Could not properly shut down the session cluster entry point.", exception);
 		}
@@ -255,7 +232,6 @@ public abstract class SessionClusterEntrypoint extends ClusterEntrypoint {
 		Configuration configuration,
 		LeaderGatewayRetriever<DispatcherGateway> dispatcherGatewayRetriever,
 		LeaderGatewayRetriever<ResourceManagerGateway> resourceManagerGatewayRetriever,
-			TransientBlobService transientBlobService,
 		Executor executor,
 		MetricQueryServiceRetriever metricQueryServiceRetriever,
 		LeaderElectionService leaderElectionService) throws Exception {
@@ -268,7 +244,6 @@ public abstract class SessionClusterEntrypoint extends ClusterEntrypoint {
 			configuration,
 			restHandlerConfiguration,
 			resourceManagerGatewayRetriever,
-			transientBlobService,
 			executor,
 			metricQueryServiceRetriever,
 			leaderElectionService,
@@ -310,6 +285,5 @@ public abstract class SessionClusterEntrypoint extends ClusterEntrypoint {
 		HeartbeatServices heartbeatServices,
 		MetricRegistry metricRegistry,
 		FatalErrorHandler fatalErrorHandler,
-		ClusterInformation clusterInformation,
 		@Nullable String webInterfaceUrl) throws Exception;
 }

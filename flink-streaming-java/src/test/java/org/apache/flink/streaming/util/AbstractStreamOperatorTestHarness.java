@@ -35,8 +35,7 @@ import org.apache.flink.runtime.execution.Environment;
 import org.apache.flink.runtime.jobgraph.OperatorID;
 import org.apache.flink.runtime.operators.testutils.MockEnvironment;
 import org.apache.flink.runtime.operators.testutils.MockInputSplitProvider;
-import org.apache.flink.runtime.state.CheckpointStorage;
-import org.apache.flink.runtime.state.CheckpointStorageLocationReference;
+import org.apache.flink.runtime.state.CheckpointStreamFactory;
 import org.apache.flink.runtime.state.KeyGroupRange;
 import org.apache.flink.runtime.state.KeyedStateHandle;
 import org.apache.flink.runtime.state.OperatorStateHandle;
@@ -68,7 +67,6 @@ import org.apache.flink.util.Preconditions;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -115,7 +113,6 @@ public class AbstractStreamOperatorTestHarness<OUT> implements AutoCloseable {
 
 	// use this as default for tests
 	protected StateBackend stateBackend = new MemoryStateBackend();
-	private CheckpointStorage checkpointStorage = stateBackend.createCheckpointStorage(new JobID());
 
 	private final Object checkpointLock;
 
@@ -222,7 +219,18 @@ public class AbstractStreamOperatorTestHarness<OUT> implements AutoCloseable {
 			}
 		}).when(mockTask).handleAsyncException(any(String.class), any(Throwable.class));
 
-		when(mockTask.getCheckpointStorage()).thenAnswer((invocationOnMock) -> this.checkpointStorage);
+		try {
+			doAnswer(new Answer<CheckpointStreamFactory>() {
+				@Override
+				public CheckpointStreamFactory answer(InvocationOnMock invocationOnMock) throws Throwable {
+
+					final StreamOperator<?> operator = (StreamOperator<?>) invocationOnMock.getArguments()[0];
+					return stateBackend.createStreamFactory(new JobID(), operator.getClass().getSimpleName());
+				}
+			}).when(mockTask).createCheckpointStreamFactory(any(StreamOperator.class));
+		} catch (Exception e) {
+			throw new RuntimeException(e.getMessage(), e);
+		}
 
 		doAnswer(new Answer<ProcessingTimeService>() {
 			@Override
@@ -245,12 +253,6 @@ public class AbstractStreamOperatorTestHarness<OUT> implements AutoCloseable {
 
 	public void setStateBackend(StateBackend stateBackend) {
 		this.stateBackend = stateBackend;
-
-		try {
-			this.checkpointStorage = stateBackend.createCheckpointStorage(new JobID());
-		} catch (IOException e) {
-			throw new RuntimeException(e.getMessage(), e);
-		}
 	}
 
 	public Object getCheckpointLock() {
@@ -468,15 +470,14 @@ public class AbstractStreamOperatorTestHarness<OUT> implements AutoCloseable {
 	}
 
 	/**
-	 * Calls {@link StreamOperator#snapshotState(long, long, CheckpointOptions, org.apache.flink.runtime.state.CheckpointStreamFactory)}.
+	 * Calls {@link StreamOperator#snapshotState(long, long, CheckpointOptions)}.
 	 */
 	public OperatorStateHandles snapshot(long checkpointId, long timestamp) throws Exception {
 
 		OperatorSnapshotResult operatorStateResult = operator.snapshotState(
 			checkpointId,
 			timestamp,
-			CheckpointOptions.forCheckpointWithDefaultLocation(),
-			checkpointStorage.resolveCheckpointStorageLocation(checkpointId, CheckpointStorageLocationReference.getDefault()));
+			CheckpointOptions.forCheckpoint());
 
 		KeyedStateHandle keyedManaged = FutureUtil.runIfNotDoneAndGet(operatorStateResult.getKeyedStateManagedFuture());
 		KeyedStateHandle keyedRaw = FutureUtil.runIfNotDoneAndGet(operatorStateResult.getKeyedStateRawFuture());

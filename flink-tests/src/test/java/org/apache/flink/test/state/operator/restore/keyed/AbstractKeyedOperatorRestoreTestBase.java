@@ -21,7 +21,6 @@ package org.apache.flink.test.state.operator.restore.keyed;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.util.migration.MigrationVersion;
 import org.apache.flink.test.state.operator.restore.AbstractOperatorRestoreTestBase;
 import org.apache.flink.test.state.operator.restore.ExecutionMode;
 
@@ -37,15 +36,17 @@ import java.util.Collection;
 @RunWith(Parameterized.class)
 public abstract class AbstractKeyedOperatorRestoreTestBase extends AbstractOperatorRestoreTestBase {
 
-	private final MigrationVersion migrationVersion;
+	private final String savepointPath;
 
 	@Parameterized.Parameters(name = "Migrate Savepoint: {0}")
-	public static Collection<MigrationVersion> parameters () {
-		return Arrays.asList(MigrationVersion.v1_2, MigrationVersion.v1_3, MigrationVersion.v1_4);
+	public static Collection<String> parameters () {
+		return Arrays.asList(
+			"complexKeyed-flink1.2",
+			"complexKeyed-flink1.3");
 	}
 
-	public AbstractKeyedOperatorRestoreTestBase(MigrationVersion migrationVersion) {
-		this.migrationVersion = migrationVersion;
+	public AbstractKeyedOperatorRestoreTestBase(String savepointPath) {
+		this.savepointPath = savepointPath;
 	}
 
 	@Override
@@ -64,6 +65,6 @@ public abstract class AbstractKeyedOperatorRestoreTestBase extends AbstractOpera
 
 	@Override
 	protected String getMigrationSavepointName() {
-		return "complexKeyed-flink" + migrationVersion;
+		return savepointPath;
 	}
 }

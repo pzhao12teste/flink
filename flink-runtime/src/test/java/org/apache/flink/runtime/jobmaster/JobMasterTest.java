@@ -27,6 +27,7 @@ import org.apache.flink.runtime.blob.VoidBlobStore;
 import org.apache.flink.runtime.checkpoint.StandaloneCheckpointRecoveryFactory;
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import org.apache.flink.runtime.concurrent.ScheduledExecutor;
+import org.apache.flink.runtime.execution.librarycache.BlobLibraryCacheManager;
 import org.apache.flink.runtime.execution.librarycache.FlinkUserCodeClassLoaders;
 import org.apache.flink.runtime.executiongraph.ArchivedExecutionGraph;
 import org.apache.flink.runtime.executiongraph.restart.NoRestartStrategy;
@@ -40,8 +41,6 @@ import org.apache.flink.runtime.messages.Acknowledge;
 import org.apache.flink.runtime.registration.RegistrationResponse;
 import org.apache.flink.runtime.resourcemanager.ResourceManagerId;
 import org.apache.flink.runtime.resourcemanager.utils.TestingResourceManagerGateway;
-import org.apache.flink.runtime.rest.handler.legacy.backpressure.BackPressureStatsTracker;
-import org.apache.flink.runtime.rest.handler.legacy.backpressure.StackTraceSampleCoordinator;
 import org.apache.flink.runtime.rpc.TestingRpcService;
 import org.apache.flink.runtime.taskexecutor.TestingTaskExecutorGateway;
 import org.apache.flink.runtime.taskmanager.LocalTaskManagerLocation;
@@ -61,9 +60,6 @@ import java.util.concurrent.TimeUnit;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 
-/**
- * Tests for {@link JobMaster}.
- */
 @Category(Flip6.class)
 public class JobMasterTest extends TestLogger {
 
@@ -117,6 +113,10 @@ public class JobMasterTest extends TestLogger {
 				heartbeatServices,
 				Executors.newScheduledThreadPool(1),
 				blobServer,
+				new BlobLibraryCacheManager(
+					blobServer,
+					FlinkUserCodeClassLoaders.ResolveOrder.CHILD_FIRST,
+					new String[0]),
 				new NoRestartStrategy.NoRestartStrategyFactory(),
 				testingTimeout,
 				null,
@@ -124,10 +124,7 @@ public class JobMasterTest extends TestLogger {
 				testingFatalErrorHandler,
 				FlinkUserCodeClassLoaders.parentFirst(new URL[0], JobMasterTest.class.getClassLoader()),
 				null,
-				null,
-				new BackPressureStatsTracker(
-					new StackTraceSampleCoordinator(scheduledExecutor, testingTimeout.toMilliseconds()),
-					60000, 100, 60000, Time.milliseconds(50)));
+				null);
 
 			CompletableFuture<Acknowledge> startFuture = jobMaster.start(jobMasterId, testingTimeout);
 
@@ -142,6 +139,8 @@ public class JobMasterTest extends TestLogger {
 
 			// wait for the completion of the registration
 			registrationResponse.get();
+
+			System.out.println("foobar");
 
 			final ResourceID heartbeatResourceId = heartbeatResourceIdFuture.get(testingTimeout.toMilliseconds(), TimeUnit.MILLISECONDS);
 
@@ -218,6 +217,10 @@ public class JobMasterTest extends TestLogger {
 				heartbeatServices,
 				Executors.newScheduledThreadPool(1),
 				blobServer,
+				new BlobLibraryCacheManager(
+					blobServer,
+					FlinkUserCodeClassLoaders.ResolveOrder.CHILD_FIRST,
+					new String[0]),
 				new NoRestartStrategy.NoRestartStrategyFactory(),
 				testingTimeout,
 				null,
@@ -225,10 +228,7 @@ public class JobMasterTest extends TestLogger {
 				testingFatalErrorHandler,
 				FlinkUserCodeClassLoaders.parentFirst(new URL[0], JobMasterTest.class.getClassLoader()),
 				null,
-				null,
-				new BackPressureStatsTracker(
-					new StackTraceSampleCoordinator(scheduledExecutor, testingTimeout.toMilliseconds()),
-					60000, 100, 60000, Time.milliseconds(50)));
+				null);
 
 			CompletableFuture<Acknowledge> startFuture = jobMaster.start(jobMasterId, testingTimeout);
 

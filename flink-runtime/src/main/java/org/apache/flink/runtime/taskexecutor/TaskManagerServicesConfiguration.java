@@ -413,9 +413,11 @@ public class TaskManagerServicesConfiguration {
 	private static QueryableStateConfiguration parseQueryableStateConfiguration(Configuration config) {
 
 		final Iterator<Integer> proxyPorts = NetUtils.getPortRangeFromString(
-				config.getString(QueryableStateOptions.PROXY_PORT_RANGE));
+				config.getString(QueryableStateOptions.PROXY_PORT_RANGE,
+						QueryableStateOptions.PROXY_PORT_RANGE.defaultValue()));
 		final Iterator<Integer> serverPorts = NetUtils.getPortRangeFromString(
-				config.getString(QueryableStateOptions.SERVER_PORT_RANGE));
+				config.getString(QueryableStateOptions.SERVER_PORT_RANGE,
+						QueryableStateOptions.SERVER_PORT_RANGE.defaultValue()));
 
 		final int numProxyServerNetworkThreads = config.getInteger(QueryableStateOptions.PROXY_NETWORK_THREADS);
 		final int numProxyServerQueryThreads = config.getInteger(QueryableStateOptions.PROXY_ASYNC_QUERY_THREADS);

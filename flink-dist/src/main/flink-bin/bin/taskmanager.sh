@@ -18,9 +18,14 @@
 ################################################################################
 
 # Start/stop a Flink TaskManager.
-USAGE="Usage: taskmanager.sh (start|start-foreground|stop|stop-all)"
+USAGE="Usage: taskmanager.sh (start|start-foreground|stop|stop-all) [flip6]"
 
 STARTSTOP=$1
+TYPE=taskmanager
+
+if [[ "$2" == "flip6" ]]; then
+    TYPE=taskexecutor
+fi
 
 if [[ $STARTSTOP != "start" ]] && [[ $STARTSTOP != "start-foreground" ]] && [[ $STARTSTOP != "stop" ]] && [[ $STARTSTOP != "stop-all" ]]; then
   echo $USAGE
@@ -31,12 +36,6 @@ bin=`dirname "$0"`
 bin=`cd "$bin"; pwd`
 
 . "$bin"/config.sh
-
-TYPE=taskmanager
-
-if [[ "${FLINK_MODE}" == "flip6" ]]; then
-    TYPE=taskexecutor
-fi
 
 if [[ $STARTSTOP == "start" ]] || [[ $STARTSTOP == "start-foreground" ]]; then
 

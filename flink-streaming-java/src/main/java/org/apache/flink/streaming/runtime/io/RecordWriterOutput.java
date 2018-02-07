@@ -19,20 +19,17 @@ package org.apache.flink.streaming.runtime.io;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
-import org.apache.flink.metrics.Gauge;
 import org.apache.flink.runtime.event.AbstractEvent;
 import org.apache.flink.runtime.io.network.api.writer.RecordWriter;
 import org.apache.flink.runtime.plugable.SerializationDelegate;
 import org.apache.flink.streaming.api.operators.Output;
 import org.apache.flink.streaming.api.watermark.Watermark;
-import org.apache.flink.streaming.runtime.metrics.WatermarkGauge;
 import org.apache.flink.streaming.runtime.streamrecord.LatencyMarker;
 import org.apache.flink.streaming.runtime.streamrecord.StreamElement;
 import org.apache.flink.streaming.runtime.streamrecord.StreamElementSerializer;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.runtime.streamstatus.StreamStatus;
 import org.apache.flink.streaming.runtime.streamstatus.StreamStatusProvider;
-import org.apache.flink.streaming.runtime.tasks.OperatorChain;
 import org.apache.flink.util.OutputTag;
 
 import java.io.IOException;
@@ -43,7 +40,7 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  * Implementation of {@link Output} that sends data using a {@link RecordWriter}.
  */
 @Internal
-public class RecordWriterOutput<OUT> implements OperatorChain.WatermarkGaugeExposingOutput<StreamRecord<OUT>> {
+public class RecordWriterOutput<OUT> implements Output<StreamRecord<OUT>> {
 
 	private StreamRecordWriter<SerializationDelegate<StreamElement>> recordWriter;
 
@@ -52,8 +49,6 @@ public class RecordWriterOutput<OUT> implements OperatorChain.WatermarkGaugeExpo
 	private final StreamStatusProvider streamStatusProvider;
 
 	private final OutputTag outputTag;
-
-	private final WatermarkGauge watermarkGauge = new WatermarkGauge();
 
 	@SuppressWarnings("unchecked")
 	public RecordWriterOutput(
@@ -113,7 +108,6 @@ public class RecordWriterOutput<OUT> implements OperatorChain.WatermarkGaugeExpo
 
 	@Override
 	public void emitWatermark(Watermark mark) {
-		watermarkGauge.setCurrentWatermark(mark.getTimestamp());
 		serializationDelegate.setInstance(mark);
 
 		if (streamStatusProvider.getStreamStatus().isActive()) {
@@ -163,10 +157,5 @@ public class RecordWriterOutput<OUT> implements OperatorChain.WatermarkGaugeExpo
 
 	public void clearBuffers() {
 		recordWriter.clearBuffers();
-	}
-
-	@Override
-	public Gauge<Long> getWatermarkGauge() {
-		return watermarkGauge;
 	}
 }

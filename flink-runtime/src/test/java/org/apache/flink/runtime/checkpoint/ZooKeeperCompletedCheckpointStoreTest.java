@@ -21,8 +21,8 @@ package org.apache.flink.runtime.checkpoint;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.runtime.concurrent.Executors;
+import org.apache.flink.runtime.state.EmptyStreamStateHandle;
 import org.apache.flink.runtime.state.RetrievableStateHandle;
-import org.apache.flink.runtime.state.testutils.TestCompletedCheckpointStorageLocation;
 import org.apache.flink.runtime.zookeeper.RetrievableStateStorageHelper;
 import org.apache.flink.runtime.zookeeper.ZooKeeperStateHandleStore;
 import org.apache.flink.util.TestLogger;
@@ -96,7 +96,8 @@ public class ZooKeeperCompletedCheckpointStoreTest extends TestLogger {
 			new HashMap<>(),
 			null,
 			CheckpointProperties.forCheckpoint(CheckpointRetentionPolicy.NEVER_RETAIN_AFTER_TERMINATION),
-			new TestCompletedCheckpointStorageLocation());
+			new EmptyStreamStateHandle(),
+				"<pointer>");
 
 		final CompletedCheckpoint completedCheckpoint2 = new CompletedCheckpoint(
 			new JobID(),
@@ -106,7 +107,8 @@ public class ZooKeeperCompletedCheckpointStoreTest extends TestLogger {
 			new HashMap<>(),
 			null,
 			CheckpointProperties.forCheckpoint(CheckpointRetentionPolicy.NEVER_RETAIN_AFTER_TERMINATION),
-			new TestCompletedCheckpointStorageLocation());
+			new EmptyStreamStateHandle(),
+			"<pointer");
 
 		final Collection<Long> expectedCheckpointIds = new HashSet<>(2);
 		expectedCheckpointIds.add(1L);

@@ -62,7 +62,7 @@ abstract class PunctuatedWatermarkAssigner extends WatermarkStrategy {
 }
 
 /** A strategy which indicates the watermarks should be preserved from the underlying datastream.*/
-final class PreserveWatermarks extends WatermarkStrategy
+class PreserveWatermarks extends WatermarkStrategy
 object PreserveWatermarks {
   val INSTANCE: PreserveWatermarks = new PreserveWatermarks
 }

@@ -20,7 +20,6 @@ package org.apache.flink.runtime.state.memory;
 
 import org.apache.flink.core.memory.ByteArrayOutputStreamWithPos;
 import org.apache.flink.runtime.state.CheckpointStreamFactory;
-import org.apache.flink.runtime.state.CheckpointedStateScope;
 import org.apache.flink.runtime.state.StreamStateHandle;
 
 import java.io.IOException;
@@ -47,7 +46,8 @@ public class MemCheckpointStreamFactory implements CheckpointStreamFactory {
 
 	@Override
 	public CheckpointStateOutputStream createCheckpointStateOutputStream(
-			CheckpointedStateScope scope) throws Exception {
+			long checkpointID, long timestamp) throws Exception
+	{
 		return new MemoryCheckpointOutputStream(maxStateSize);
 	}
 

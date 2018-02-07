@@ -126,8 +126,6 @@ KEY_ENV_SSH_OPTS="env.ssh.opts"
 KEY_HIGH_AVAILABILITY="high-availability"
 KEY_ZK_HEAP_MB="zookeeper.heap.mb"
 
-KEY_FLINK_MODE="mode"
-
 ########################################################################################################################
 # PATHS AND CONFIG
 ########################################################################################################################
@@ -260,11 +258,6 @@ fi
 if [ -z "${FLINK_TM_NET_BUF_MAX}" -o "${FLINK_TM_NET_BUF_MAX}" = "-1" ]; then
     # default: 1GB = 1073741824 bytes
     FLINK_TM_NET_BUF_MAX=$(readFromConfig ${KEY_TASKM_NET_BUF_MAX} 1073741824 "${YAML_CONF}")
-fi
-
-# Define FLIP if it is not already set
-if [ -z "${FLINK_MODE}" ]; then
-    FLINK_MODE=$(readFromConfig ${KEY_FLINK_MODE} "old" "${YAML_CONF}")
 fi
 
 
@@ -487,16 +480,17 @@ readSlaves() {
 }
 
 # starts or stops TMs on all slaves
-# TMSlaves start|stop
+# TMSlaves start|stop [flip6]
 TMSlaves() {
     CMD=$1
+    FLIP6=$2
 
     readSlaves
 
     if [ ${SLAVES_ALL_LOCALHOST} = true ] ; then
         # all-local setup
         for slave in ${SLAVES[@]}; do
-            "${FLINK_BIN_DIR}"/taskmanager.sh "${CMD}"
+            "${FLINK_BIN_DIR}"/taskmanager.sh "${CMD}" "${FLIP6}"
         done
     else
         # non-local setup
@@ -504,11 +498,11 @@ TMSlaves() {
         command -v pdsh >/dev/null 2>&1
         if [[ $? -ne 0 ]]; then
             for slave in ${SLAVES[@]}; do
-                ssh -n $FLINK_SSH_OPTS $slave -- "nohup /bin/bash -l \"${FLINK_BIN_DIR}/taskmanager.sh\" \"${CMD}\" &"
+                ssh -n $FLINK_SSH_OPTS $slave -- "nohup /bin/bash -l \"${FLINK_BIN_DIR}/taskmanager.sh\" \"${CMD}\" \"${FLIP6}\" &"
             done
         else
             PDSH_SSH_ARGS="" PDSH_SSH_ARGS_APPEND=$FLINK_SSH_OPTS pdsh -w $(IFS=, ; echo "${SLAVES[*]}") \
-                "nohup /bin/bash -l \"${FLINK_BIN_DIR}/taskmanager.sh\" \"${CMD}\""
+                "nohup /bin/bash -l \"${FLINK_BIN_DIR}/taskmanager.sh\" \"${CMD}\" \"${FLIP6}\""
         fi
     fi
 }

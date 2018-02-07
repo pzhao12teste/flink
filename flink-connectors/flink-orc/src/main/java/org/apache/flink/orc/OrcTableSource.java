@@ -52,8 +52,6 @@ import org.apache.flink.util.Preconditions;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.ql.io.sarg.PredicateLeaf;
 import org.apache.orc.TypeDescription;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -82,8 +80,6 @@ import java.util.List;
 public class OrcTableSource
 	implements BatchTableSource<Row>, ProjectableTableSource<Row>, FilterableTableSource<Row> {
 
-	private static final Logger LOG = LoggerFactory.getLogger(OrcTableSource.class);
-
 	private static final int DEFAULT_BATCH_SIZE = 1000;
 
 	// path to read ORC files from
@@ -96,8 +92,6 @@ public class OrcTableSource
 	private final Configuration orcConfig;
 	// the number of rows to read in a batch
 	private final int batchSize;
-	// flag whether a path is recursively enumerated
-	private final boolean recursiveEnumeration;
 
 	// type information of the data returned by the InputFormat
 	private final RowTypeInfo typeInfo;
@@ -113,15 +107,13 @@ public class OrcTableSource
 	 * @param orcSchema The schema of the ORC files as TypeDescription.
 	 * @param orcConfig The configuration to read the ORC files.
 	 * @param batchSize The number of Rows to read in a batch, default is 1000.
-	 * @param recursiveEnumeration Flag whether the path should be recursively enumerated or not.
 	 */
-	private OrcTableSource(String path, TypeDescription orcSchema, Configuration orcConfig, int batchSize, boolean recursiveEnumeration) {
-		this(path, orcSchema, orcConfig, batchSize, recursiveEnumeration, null, null);
+	private OrcTableSource(String path, TypeDescription orcSchema, Configuration orcConfig, int batchSize) {
+		this(path, orcSchema, orcConfig, batchSize, null, null);
 	}
 
 	private OrcTableSource(String path, TypeDescription orcSchema, Configuration orcConfig,
-							int batchSize, boolean recursiveEnumeration,
-							int[] selectedFields, Predicate[] predicates) {
+							int batchSize, int[] selectedFields, Predicate[] predicates) {
 
 		Preconditions.checkNotNull(path, "Path must not be null.");
 		Preconditions.checkNotNull(orcSchema, "OrcSchema must not be null.");
@@ -131,12 +123,11 @@ public class OrcTableSource
 		this.orcSchema = orcSchema;
 		this.orcConfig = orcConfig;
 		this.batchSize = batchSize;
-		this.recursiveEnumeration = recursiveEnumeration;
 		this.selectedFields = selectedFields;
 		this.predicates = predicates;
 
 		// determine the type information from the ORC schema
-		RowTypeInfo typeInfoFromSchema = (RowTypeInfo) OrcBatchReader.schemaToTypeInfo(this.orcSchema);
+		RowTypeInfo typeInfoFromSchema = (RowTypeInfo) OrcUtils.schemaToTypeInfo(this.orcSchema);
 
 		// set return type info
 		if (selectedFields == null) {
@@ -155,7 +146,6 @@ public class OrcTableSource
 	@Override
 	public DataSet<Row> getDataSet(ExecutionEnvironment execEnv) {
 		OrcRowInputFormat orcIF = buildOrcInputFormat();
-		orcIF.setNestedFileEnumeration(recursiveEnumeration);
 		if (selectedFields != null) {
 			orcIF.selectFields(selectedFields);
 		}
@@ -185,7 +175,7 @@ public class OrcTableSource
 	@Override
 	public TableSource<Row> projectFields(int[] selectedFields) {
 		// create a copy of the OrcTableSouce with new selected fields
-		return new OrcTableSource(path, orcSchema, orcConfig, batchSize, recursiveEnumeration, selectedFields, predicates);
+		return new OrcTableSource(path, orcSchema, orcConfig, batchSize, selectedFields, predicates);
 	}
 
 	@Override
@@ -196,14 +186,11 @@ public class OrcTableSource
 		for (Expression pred : predicates) {
 			Predicate orcPred = toOrcPredicate(pred);
 			if (orcPred != null) {
-				LOG.info("Predicate [{}] converted into OrcPredicate [{}] and pushed into OrcTableSource for path {}.", pred, orcPred, path);
 				orcPredicates.add(orcPred);
-			} else {
-				LOG.info("Predicate [{}] could not be pushed into OrcTableSource for path {}.", pred, path);
 			}
 		}
 
-		return new OrcTableSource(path, orcSchema, orcConfig, batchSize, recursiveEnumeration, selectedFields, orcPredicates.toArray(new Predicate[]{}));
+		return new OrcTableSource(path, orcSchema, orcConfig, batchSize, selectedFields, orcPredicates.toArray(new Predicate[]{}));
 	}
 
 	@Override
@@ -248,32 +235,17 @@ public class OrcTableSource
 
 			if (!isValid(binComp)) {
 				// not a valid predicate
-				LOG.debug("Unsupported predicate [{}] cannot be pushed into OrcTableSource.", pred);
 				return null;
 			}
 			PredicateLeaf.Type litType = getLiteralType(binComp);
 			if (litType == null) {
 				// unsupported literal type
-				LOG.debug("Unsupported predicate [{}] cannot be pushed into OrcTableSource.", pred);
 				return null;
 			}
 
 			boolean literalOnRight = literalOnRight(binComp);
 			String colName = getColumnName(binComp);
-
-			// fetch literal and ensure it is serializable
-			Object literalObj = getLiteral(binComp);
-			Serializable literal;
-			// validate that literal is serializable
-			if (literalObj instanceof Serializable) {
-				literal = (Serializable) literalObj;
-			} else {
-				LOG.warn("Encountered a non-serializable literal of type {}. " +
-						"Cannot push predicate [{}] into OrcTableSource. " +
-						"This is a bug and should be reported.",
-						literalObj.getClass().getCanonicalName(), pred);
-				return null;
-			}
+			Serializable literal = (Serializable) getLiteral(binComp);
 
 			if (pred instanceof EqualTo) {
 				return new OrcRowInputFormat.Equals(colName, litType, literal);
@@ -310,7 +282,6 @@ public class OrcTableSource
 				}
 			} else {
 				// unsupported predicate
-				LOG.debug("Unsupported predicate [{}] cannot be pushed into OrcTableSource.", pred);
 				return null;
 			}
 		} else if (pred instanceof UnaryExpression) {
@@ -318,13 +289,11 @@ public class OrcTableSource
 			UnaryExpression unary = (UnaryExpression) pred;
 			if (!isValid(unary)) {
 				// not a valid predicate
-				LOG.debug("Unsupported predicate [{}] cannot be pushed into OrcTableSource.", pred);
 				return null;
 			}
 			PredicateLeaf.Type colType = toOrcType(((UnaryExpression) pred).child().resultType());
 			if (colType == null) {
 				// unsupported type
-				LOG.debug("Unsupported predicate [{}] cannot be pushed into OrcTableSource.", pred);
 				return null;
 			}
 
@@ -337,12 +306,10 @@ public class OrcTableSource
 					new OrcRowInputFormat.IsNull(colName, colType));
 			} else {
 				// unsupported predicate
-				LOG.debug("Unsupported predicate [{}] cannot be pushed into OrcTableSource.", pred);
 				return null;
 			}
 		} else {
 			// unsupported predicate
-			LOG.debug("Unsupported predicate [{}] cannot be pushed into OrcTableSource.", pred);
 			return null;
 		}
 	}
@@ -438,11 +405,8 @@ public class OrcTableSource
 
 		private int batchSize = 0;
 
-		private boolean recursive = true;
-
 		/**
 		 * Sets the path of the ORC file(s).
-		 * If the path specifies a directory, it will be recursively enumerated.
 		 *
 		 * @param path The path of the ORC file(s).
 		 * @return The builder.
@@ -451,21 +415,6 @@ public class OrcTableSource
 			Preconditions.checkNotNull(path, "Path must not be null.");
 			Preconditions.checkArgument(!path.isEmpty(), "Path must not be empty.");
 			this.path = path;
-			return this;
-		}
-
-		/**
-		 * Sets the path of the ORC file(s).
-		 *
-		 * @param path The path of the ORC file(s).
-		 * @param recursive Flag whether the to enumerate
-		 * @return The builder.
-		 */
-		public Builder path(String path, boolean recursive) {
-			Preconditions.checkNotNull(path, "Path must not be null.");
-			Preconditions.checkArgument(!path.isEmpty(), "Path must not be empty.");
-			this.path = path;
-			this.recursive = recursive;
 			return this;
 		}
 
@@ -534,7 +483,7 @@ public class OrcTableSource
 				// set default batch size
 				this.batchSize = DEFAULT_BATCH_SIZE;
 			}
-			return new OrcTableSource(this.path, this.schema, this.config, this.batchSize, this.recursive);
+			return new OrcTableSource(this.path, this.schema, this.config, this.batchSize);
 		}
 
 	}

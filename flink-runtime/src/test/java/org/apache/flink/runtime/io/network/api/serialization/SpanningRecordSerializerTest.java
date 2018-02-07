@@ -33,16 +33,13 @@ import java.util.Random;
 
 import static org.apache.flink.runtime.io.network.buffer.BufferBuilderTestUtils.createBufferBuilder;
 
-/**
- * Tests for the {@link SpanningRecordSerializer}.
- */
 public class SpanningRecordSerializerTest {
 
 	@Test
 	public void testHasData() {
-		final int segmentSize = 16;
+		final int SEGMENT_SIZE = 16;
 
-		final SpanningRecordSerializer<SerializationTestType> serializer = new SpanningRecordSerializer<>();
+		final SpanningRecordSerializer<SerializationTestType> serializer = new SpanningRecordSerializer<SerializationTestType>();
 		final SerializationTestType randomIntRecord = Util.randomRecord(SerializationTestTypeFactory.INT);
 
 		Assert.assertFalse(serializer.hasData());
@@ -51,13 +48,13 @@ public class SpanningRecordSerializerTest {
 			serializer.addRecord(randomIntRecord);
 			Assert.assertTrue(serializer.hasData());
 
-			serializer.setNextBufferBuilder(createBufferBuilder(segmentSize));
+			serializer.setNextBufferBuilder(createBufferBuilder(SEGMENT_SIZE));
 			Assert.assertTrue(serializer.hasData());
 
 			serializer.clear();
 			Assert.assertFalse(serializer.hasData());
 
-			serializer.setNextBufferBuilder(createBufferBuilder(segmentSize));
+			serializer.setNextBufferBuilder(createBufferBuilder(SEGMENT_SIZE));
 
 			serializer.addRecord(randomIntRecord);
 			Assert.assertTrue(serializer.hasData());
@@ -73,17 +70,16 @@ public class SpanningRecordSerializerTest {
 
 	@Test
 	public void testEmptyRecords() {
-		final int segmentSize = 11;
+		final int SEGMENT_SIZE = 11;
 
-		final SpanningRecordSerializer<SerializationTestType> serializer = new SpanningRecordSerializer<>();
+		final SpanningRecordSerializer<SerializationTestType> serializer = new SpanningRecordSerializer<SerializationTestType>();
 
 		try {
 			Assert.assertEquals(
 				RecordSerializer.SerializationResult.FULL_RECORD,
-				serializer.setNextBufferBuilder(createBufferBuilder(segmentSize)));
+				serializer.setNextBufferBuilder(createBufferBuilder(SEGMENT_SIZE)));
 		} catch (IOException e) {
 			e.printStackTrace();
-			Assert.fail(e.getMessage());
 		}
 
 		try {
@@ -124,7 +120,7 @@ public class SpanningRecordSerializerTest {
 			result = serializer.addRecord(emptyRecord);
 			Assert.assertEquals(RecordSerializer.SerializationResult.PARTIAL_RECORD_MEMORY_SEGMENT_FULL, result);
 
-			result = serializer.setNextBufferBuilder(createBufferBuilder(segmentSize));
+			result = serializer.setNextBufferBuilder(createBufferBuilder(SEGMENT_SIZE));
 			Assert.assertEquals(RecordSerializer.SerializationResult.FULL_RECORD, result);
 		}
 		catch (Exception e) {
@@ -135,11 +131,11 @@ public class SpanningRecordSerializerTest {
 
 	@Test
 	public void testIntRecordsSpanningMultipleSegments() {
-		final int segmentSize = 1;
-		final int numValues = 10;
+		final int SEGMENT_SIZE = 1;
+		final int NUM_VALUES = 10;
 
 		try {
-			test(Util.randomRecords(numValues, SerializationTestTypeFactory.INT), segmentSize);
+			test(Util.randomRecords(NUM_VALUES, SerializationTestTypeFactory.INT), SEGMENT_SIZE);
 		}
 		catch (Exception e) {
 			e.printStackTrace();
@@ -149,11 +145,11 @@ public class SpanningRecordSerializerTest {
 
 	@Test
 	public void testIntRecordsWithAlignedSegments() {
-		final int segmentSize = 64;
-		final int numValues = 64;
+		final int SEGMENT_SIZE = 64;
+		final int NUM_VALUES = 64;
 
 		try {
-			test(Util.randomRecords(numValues, SerializationTestTypeFactory.INT), segmentSize);
+			test(Util.randomRecords(NUM_VALUES, SerializationTestTypeFactory.INT), SEGMENT_SIZE);
 		}
 		catch (Exception e) {
 			e.printStackTrace();
@@ -163,11 +159,11 @@ public class SpanningRecordSerializerTest {
 
 	@Test
 	public void testIntRecordsWithUnalignedSegments() {
-		final int segmentSize = 31;
-		final int numValues = 248; // least common multiple => last record should align
+		final int SEGMENT_SIZE = 31;
+		final int NUM_VALUES = 248; // least common multiple => last record should align
 
 		try {
-			test(Util.randomRecords(numValues, SerializationTestTypeFactory.INT), segmentSize);
+			test(Util.randomRecords(NUM_VALUES, SerializationTestTypeFactory.INT), SEGMENT_SIZE);
 		}
 		catch (Exception e) {
 			e.printStackTrace();
@@ -177,11 +173,11 @@ public class SpanningRecordSerializerTest {
 
 	@Test
 	public void testRandomRecords() {
-		final int segmentSize = 127;
-		final int numValues = 100000;
+		final int SEGMENT_SIZE = 127;
+		final int NUM_VALUES = 100000;
 
 		try {
-			test(Util.randomRecords(numValues), segmentSize);
+			test(Util.randomRecords(NUM_VALUES), SEGMENT_SIZE);
 		}
 		catch (Exception e) {
 			e.printStackTrace();
@@ -194,16 +190,16 @@ public class SpanningRecordSerializerTest {
 	/**
 	 * Iterates over the provided records and tests whether the {@link SpanningRecordSerializer} returns the expected
 	 * {@link RecordSerializer.SerializationResult} values.
-	 *
-	 * <p>Only a single {@link MemorySegment} will be allocated.
+	 * <p>
+	 * Only a single {@link MemorySegment} will be allocated.
 	 *
 	 * @param records records to test
 	 * @param segmentSize size for the {@link MemorySegment}
 	 */
 	private void test(Util.MockRecords records, int segmentSize) throws Exception {
-		final int serializationOverhead = 4; // length encoding
+		final int SERIALIZATION_OVERHEAD = 4; // length encoding
 
-		final SpanningRecordSerializer<SerializationTestType> serializer = new SpanningRecordSerializer<>();
+		final SpanningRecordSerializer<SerializationTestType> serializer = new SpanningRecordSerializer<SerializationTestType>();
 
 		// -------------------------------------------------------------------------------------------------------------
 
@@ -212,7 +208,7 @@ public class SpanningRecordSerializerTest {
 		int numBytes = 0;
 		for (SerializationTestType record : records) {
 			RecordSerializer.SerializationResult result = serializer.addRecord(record);
-			numBytes += record.length() + serializationOverhead;
+			numBytes += record.length() + SERIALIZATION_OVERHEAD;
 
 			if (numBytes < segmentSize) {
 				Assert.assertEquals(RecordSerializer.SerializationResult.FULL_RECORD, result);

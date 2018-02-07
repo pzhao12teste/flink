@@ -22,13 +22,12 @@ import org.apache.flink.annotation.Internal;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.core.testutils.OneShotLatch;
 import org.apache.flink.runtime.state.CheckpointStreamFactory;
-import org.apache.flink.runtime.state.CheckpointedStateScope;
 import org.apache.flink.runtime.state.memory.MemCheckpointStreamFactory;
 
 import java.io.IOException;
 
 /**
- * {@link CheckpointStreamFactory} for tests that allows for testing cancellation in async IO.
+ * {@link CheckpointStreamFactory} for tests that allows for testing cancellation in async IO
  */
 @VisibleForTesting
 @Internal
@@ -70,7 +69,7 @@ public class BlockerCheckpointStreamFactory implements CheckpointStreamFactory {
 	}
 
 	@Override
-	public CheckpointStateOutputStream createCheckpointStateOutputStream(CheckpointedStateScope scope) throws Exception {
+	public MemCheckpointStreamFactory.MemoryCheckpointOutputStream createCheckpointStateOutputStream(long checkpointID, long timestamp) throws Exception {
 		this.lastCreatedStream = new MemCheckpointStreamFactory.MemoryCheckpointOutputStream(maxSize) {
 
 			private int afterNInvocations = afterNumberInvocations;

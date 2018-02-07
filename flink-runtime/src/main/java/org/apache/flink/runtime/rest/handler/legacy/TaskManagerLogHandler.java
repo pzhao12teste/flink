@@ -154,7 +154,7 @@ public class TaskManagerLogHandler extends RedirectHandler<JobManagerGateway> im
 			cache = blobPortFuture.thenApplyAsync(
 				(Integer port) -> {
 					try {
-						return new TransientBlobCache(config, new InetSocketAddress(jobManagerGateway.getHostname(), port));
+						return new TransientBlobCache(new InetSocketAddress(jobManagerGateway.getHostname(), port), config);
 					} catch (IOException e) {
 						throw new CompletionException(new FlinkException("Could not create TransientBlobCache.", e));
 					}

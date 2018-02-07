@@ -192,13 +192,12 @@ class RowTimeBoundedRangeOver(
       val retractTsList: JList[Long] = new JArrayList[Long]
 
       // do retraction
-      val iter = dataState.iterator()
-      while (iter.hasNext) {
-        val entry = iter.next()
-        val dataTs: Long = entry.getKey
+      val dataTimestampIt = dataState.keys.iterator
+      while (dataTimestampIt.hasNext) {
+        val dataTs: Long = dataTimestampIt.next()
         val offset = timestamp - dataTs
         if (offset > precedingOffset) {
-          val retractDataList = entry.getValue
+          val retractDataList = dataState.get(dataTs)
           dataListIndex = 0
           while (dataListIndex < retractDataList.size()) {
             val retractRow = retractDataList.get(dataListIndex)

@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <!--
 Licensed to the Apache Software Foundation (ASF) under one
 or more contributor license agreements.  See the NOTICE file
@@ -15,8 +14,7 @@ KIND, either express or implied.  See the License for the
 specific language governing permissions and limitations
 under the License.
 -->
-<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
-		 xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
 	<parent>
 		<groupId>org.apache</groupId>
@@ -127,7 +125,7 @@ under the License.
 		<hamcrest.version>1.3</hamcrest.version>
 		<japicmp.skip>false</japicmp.skip>
 		<!-- run all groups except flip6 by default -->
-		<test.groups></test.groups>
+		<test.groups/>
 		<test.excludedGroups>org.apache.flink.testutils.category.Flip6</test.excludedGroups>
 		<codebase>old</codebase>
 		<!--
@@ -138,7 +136,12 @@ under the License.
 		-->
 		<minikdc.version>2.7.2</minikdc.version>
 		<generated.docs.dir>./docs/_includes/generated</generated.docs.dir>
-	</properties>
+	<gib.commitRange>${env.TRAVIS_COMMIT_RANGE}</gib.commitRange>
+        <gib.enabled>true</gib.enabled>
+        <gib.useEkstazi>true</gib.useEkstazi>
+        <gib.excludePathRegex>(.*\.apt$)|(.*\.txt$)|(.*\.md$)|(.*\.html$)|(.*\.rst$)|(.*\.scss$)|(.*\.css$)|(.*\.png$)|(.*\.py$)|(.*README$)|(.*README\.*)|(.*\.jpg$)|(.*\.jpeg$)|(.*NOTICE$)|(.*\.git.*$)|(site.xml)|(index.xml)|(checkstyle.xml)</gib.excludePathRegex>
+        <gib.classpathFile>/tmp/classpathFile</gib.classpathFile>
+    </properties>
 
 	<dependencies>
 
@@ -597,7 +600,7 @@ under the License.
 			<properties>
 				<test.groups>org.apache.flink.testutils.category.Flip6, org.apache.flink.testutils.category.OldAndFlip6</test.groups>
 				<!-- clear the excluded groups list -->
-				<test.excludedGroups></test.excludedGroups>
+				<test.excludedGroups/>
 				<codebase>flip6</codebase>
 			</properties>
 		</profile>
@@ -657,8 +660,7 @@ under the License.
 									<stylesheet>plain.xsl</stylesheet>
 
 									<fileMappers>
-										<fileMapper
-											implementation="org.codehaus.plexus.components.io.filemappers.FileExtensionMapper">
+										<fileMapper implementation="org.codehaus.plexus.components.io.filemappers.FileExtensionMapper">
 											<targetExtension>.html</targetExtension>
 										</fileMapper>
 									</fileMappers>
@@ -697,22 +699,34 @@ under the License.
 					<id>HDPReleases</id>
 					<name>HDP Releases</name>
 					<url>http://repo.hortonworks.com/content/repositories/releases/</url>
-					<snapshots><enabled>false</enabled></snapshots>
-					<releases><enabled>true</enabled></releases>
+					<snapshots>
+                        <enabled>false</enabled>
+                    </snapshots>
+					<releases>
+                        <enabled>true</enabled>
+                    </releases>
 				</repository>
 				<repository>
 					<id>HortonworksJettyHadoop</id>
 					<name>HDP Jetty</name>
 					<url>http://repo.hortonworks.com/content/repositories/jetty-hadoop</url>
-					<snapshots><enabled>false</enabled></snapshots>
-					<releases><enabled>true</enabled></releases>
+					<snapshots>
+                        <enabled>false</enabled>
+                    </snapshots>
+					<releases>
+                        <enabled>true</enabled>
+                    </releases>
 				</repository>
 				<!-- MapR -->
 				<repository>
 					<id>mapr-releases</id>
 					<url>http://repository.mapr.com/maven/</url>
-					<snapshots><enabled>false</enabled></snapshots>
-					<releases><enabled>true</enabled></releases>
+					<snapshots>
+                        <enabled>false</enabled>
+                    </snapshots>
+					<releases>
+                        <enabled>true</enabled>
+                    </releases>
 				</repository>
 			</repositories>
 		</profile>
@@ -768,7 +782,8 @@ under the License.
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-source-plugin</artifactId>
-						<version>2.2.1</version><!--$NO-MVN-MAN-VER$-->
+						<version>2.2.1</version>
+                        <!--$NO-MVN-MAN-VER$-->
 						<executions>
 							<execution>
 								<id>attach-sources</id>
@@ -781,7 +796,8 @@ under the License.
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-javadoc-plugin</artifactId>
-						<version>2.9.1</version><!--$NO-MVN-MAN-VER$-->
+						<version>2.9.1</version>
+                        <!--$NO-MVN-MAN-VER$-->
 						<configuration>
 							<quiet>true</quiet>
 						</configuration>
@@ -860,7 +876,8 @@ under the License.
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-javadoc-plugin</artifactId>
-						<version>2.9.1</version><!--$NO-MVN-MAN-VER$-->
+						<version>2.9.1</version>
+                        <!--$NO-MVN-MAN-VER$-->
 						<executions>
 							<execution>
 								<id>attach-javadocs</id>
@@ -909,7 +926,8 @@ under the License.
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-jar-plugin</artifactId>
-				<version>2.4</version><!--$NO-MVN-MAN-VER$-->
+				<version>2.4</version>
+                <!--$NO-MVN-MAN-VER$-->
 				<configuration>
 					<archive>
 						<manifest>
@@ -923,7 +941,8 @@ under the License.
 			<plugin>
 				<groupId>org.apache.rat</groupId>
 				<artifactId>apache-rat-plugin</artifactId>
-				<version>0.12</version><!--$NO-MVN-MAN-VER$-->
+				<version>0.12</version>
+                <!--$NO-MVN-MAN-VER$-->
 				<inherited>false</inherited>
 				<executions>
 					<execution>
@@ -956,7 +975,7 @@ under the License.
 						<license implementation="org.apache.rat.analysis.license.SimplePatternBasedLicense">
 							<licenseFamilyCategory>AL2 </licenseFamilyCategory>
 							<licenseFamilyName>Apache License 2.0</licenseFamilyName>
-							<notes />
+							<notes/>
 							<patterns>
 								<pattern>Licensed to the Apache Software Foundation (ASF) under one</pattern>
 							</patterns>
@@ -1015,7 +1034,6 @@ under the License.
 						<exclude>flink-formats/flink-avro/src/test/resources/avro/*.avsc</exclude>
 						<exclude>out/test/flink-avro/avro/user.avsc</exclude>
 						<exclude>flink-libraries/flink-table/src/test/scala/resources/*.out</exclude>
-						<exclude>flink-yarn/src/test/resources/krb5.keytab</exclude>
 						<exclude>test-infra/end-to-end-test/test-data/*</exclude>
 
 						<!-- snapshots -->
@@ -1053,7 +1071,10 @@ under the License.
 						<exclude>apache-maven-3.2.5/**</exclude>
 						<!-- PyCharm -->
 						<exclude>**/.idea/**</exclude>
-					</excludes>
+					<exclude>**/NOW</exclude>
+                        <exclude>**/.travis.yml</exclude>
+                        <exclude>**/.ekstazi/**</exclude>
+                    </excludes>
 				</configuration>
 			</plugin>
 			<plugin>
@@ -1089,7 +1110,8 @@ under the License.
 				<!-- just define the Java version to be used for compiling and plugins -->
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.1</version><!--$NO-MVN-MAN-VER$-->
+				<version>3.1</version>
+                <!--$NO-MVN-MAN-VER$-->
 				<configuration>
 					<source>${java.version}</source>
 					<target>${java.version}</target>
@@ -1183,6 +1205,12 @@ under the License.
 							</rules>
 						</configuration>
 					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-enforcer-plugin</artifactId>
+				<executions>
 					<execution>
 						<id>dependency-convergence</id>
 						<goals>
@@ -1287,7 +1315,8 @@ under the License.
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-javadoc-plugin</artifactId>
-					<version>2.9.1</version><!--$NO-MVN-MAN-VER$-->
+					<version>2.9.1</version>
+                    <!--$NO-MVN-MAN-VER$-->
 					<configuration>
 						<quiet>true</quiet>
 						<additionalparam>-Xdoclint:none</additionalparam>
@@ -1339,7 +1368,7 @@ under the License.
 										</goals>
 									</pluginExecutionFilter>
 									<action>
-										<ignore />
+										<ignore/>
 									</action>
 								</pluginExecution>
 								<pluginExecution>
@@ -1352,7 +1381,7 @@ under the License.
 										</goals>
 									</pluginExecutionFilter>
 									<action>
-										<ignore />
+										<ignore/>
 									</action>
 								</pluginExecution>
 								<pluginExecution>
@@ -1365,7 +1394,7 @@ under the License.
 										</goals>
 									</pluginExecutionFilter>
 									<action>
-										<ignore />
+										<ignore/>
 									</action>
 								</pluginExecution>
 							</pluginExecutions>
@@ -1474,6 +1503,14 @@ under the License.
 
 			</plugins>
 		</pluginManagement>
-	</build>
+	<extensions>
+            <extension>
+                <groupId>edu.illinois</groupId>
+                <artifactId>incremental-builder-with-ekstazi</artifactId>
+                <version>3.5.3</version>
+            </extension>
+        </extensions>
+    </build>
 
 </project>
+

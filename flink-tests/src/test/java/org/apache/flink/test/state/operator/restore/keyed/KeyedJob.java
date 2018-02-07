@@ -98,8 +98,11 @@ public class KeyedJob {
 	public static SingleOutputStreamOperator<Integer> createFirstStatefulMap(ExecutionMode mode, DataStream<Integer> input) {
 		SingleOutputStreamOperator<Integer> map = input
 			.map(new StatefulStringStoringMap(mode, "first"))
-			.setParallelism(4)
-			.uid("first");
+			.setParallelism(4);
+
+		if (mode == ExecutionMode.MIGRATE || mode == ExecutionMode.RESTORE) {
+			map.uid("first");
+		}
 
 		return map;
 	}
@@ -107,8 +110,11 @@ public class KeyedJob {
 	public static SingleOutputStreamOperator<Integer> createSecondStatefulMap(ExecutionMode mode, DataStream<Integer> input) {
 		SingleOutputStreamOperator<Integer> map = input
 			.map(new StatefulStringStoringMap(mode, "second"))
-			.setParallelism(4)
-			.uid("second");
+			.setParallelism(4);
+
+		if (mode == ExecutionMode.MIGRATE || mode == ExecutionMode.RESTORE) {
+			map.uid("second");
+		}
 
 		return map;
 	}

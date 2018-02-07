@@ -18,6 +18,8 @@
 
 package org.apache.flink.runtime.rest.messages;
 
+import org.apache.flink.runtime.rest.handler.RestHandlerSpecification;
+
 import org.apache.flink.shaded.netty4.io.netty.handler.codec.http.HttpResponseStatus;
 
 /**
@@ -29,7 +31,14 @@ import org.apache.flink.shaded.netty4.io.netty.handler.codec.http.HttpResponseSt
  * @param <P> response message type
  * @param <M> message parameters type
  */
-public interface MessageHeaders<R extends RequestBody, P extends ResponseBody, M extends MessageParameters> extends UntypedResponseMessageHeaders<R, M> {
+public interface MessageHeaders<R extends RequestBody, P extends ResponseBody, M extends MessageParameters> extends RestHandlerSpecification {
+
+	/**
+	 * Returns the class of the request message.
+	 *
+	 * @return class of the request message
+	 */
+	Class<R> getRequestClass();
 
 	/**
 	 * Returns the class of the response message.
@@ -44,4 +53,12 @@ public interface MessageHeaders<R extends RequestBody, P extends ResponseBody, M
 	 * @return http status code of the response
 	 */
 	HttpResponseStatus getResponseStatusCode();
+
+	/**
+	 * Returns a new {@link MessageParameters} object.
+	 *
+	 * @return new message parameters object
+	 */
+	M getUnresolvedMessageParameters();
+
 }

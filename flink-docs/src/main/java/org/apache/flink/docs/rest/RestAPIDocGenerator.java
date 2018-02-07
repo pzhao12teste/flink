@@ -289,17 +289,7 @@ public class RestAPIDocGenerator {
 		}
 
 		private DocumentingDispatcherRestEndpoint() {
-			super(
-				restConfig,
-				dispatcherGatewayRetriever,
-				config,
-				handlerConfig,
-				resourceManagerGatewayRetriever,
-				NoOpTransientBlobService.INSTANCE,
-				executor,
-				metricQueryServiceRetriever,
-				NoOpElectionService.INSTANCE,
-				NoOpFatalErrorHandler.INSTANCE);
+			super(restConfig, dispatcherGatewayRetriever, config, handlerConfig, resourceManagerGatewayRetriever, executor, metricQueryServiceRetriever, NoOpElectionService.INSTANCE, NoOpFatalErrorHandler.INSTANCE);
 		}
 
 		@Override

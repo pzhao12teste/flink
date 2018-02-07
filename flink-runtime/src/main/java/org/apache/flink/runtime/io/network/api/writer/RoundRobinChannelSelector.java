@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 
+
 package org.apache.flink.runtime.io.network.api.writer;
 
 import org.apache.flink.core.io.IOReadableWritable;
@@ -40,6 +41,7 @@ public class RoundRobinChannelSelector<T extends IOReadableWritable> implements 
 	public RoundRobinChannelSelector() {
 		this.nextChannelToSendTo[0] = 0;
 	}
+
 
 	@Override
 	public int[] selectChannels(final T record, final int numberOfOutputChannels) {

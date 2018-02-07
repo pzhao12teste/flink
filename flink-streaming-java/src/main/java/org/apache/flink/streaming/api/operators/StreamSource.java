@@ -18,7 +18,6 @@
 package org.apache.flink.streaming.api.operators;
 
 import org.apache.flink.annotation.Internal;
-import org.apache.flink.runtime.jobgraph.OperatorID;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.apache.flink.streaming.api.watermark.Watermark;
@@ -68,7 +67,7 @@ public class StreamSource<OUT, SRC extends SourceFunction<OUT>>
 				getProcessingTimeService(),
 				collector,
 				getExecutionConfig().getLatencyTrackingInterval(),
-				this.getOperatorID(),
+				getOperatorConfig().getVertexID(),
 				getRuntimeContext().getIndexOfThisSubtask());
 		}
 
@@ -139,7 +138,7 @@ public class StreamSource<OUT, SRC extends SourceFunction<OUT>>
 				final ProcessingTimeService processingTimeService,
 				final Output<StreamRecord<OUT>> output,
 				long latencyTrackingInterval,
-				final OperatorID operatorId,
+				final int vertexID,
 				final int subtaskIndex) {
 
 			latencyMarkTimer = processingTimeService.scheduleAtFixedRate(
@@ -148,7 +147,7 @@ public class StreamSource<OUT, SRC extends SourceFunction<OUT>>
 					public void onProcessingTime(long timestamp) throws Exception {
 						try {
 							// ProcessingTimeService callbacks are executed under the checkpointing lock
-							output.emitLatencyMarker(new LatencyMarker(timestamp, operatorId, subtaskIndex));
+							output.emitLatencyMarker(new LatencyMarker(timestamp, vertexID, subtaskIndex));
 						} catch (Throwable t) {
 							// we catch the Throwables here so that we don't trigger the processing
 							// timer services async exception handler

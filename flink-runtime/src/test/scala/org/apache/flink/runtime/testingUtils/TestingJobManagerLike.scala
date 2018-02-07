@@ -26,8 +26,9 @@ import akka.pattern.{ask, pipe}
 import org.apache.flink.api.common.JobID
 import org.apache.flink.core.fs.FSDataInputStream
 import org.apache.flink.runtime.FlinkActor
+import org.apache.flink.runtime.checkpoint.CheckpointOptions.CheckpointType
 import org.apache.flink.runtime.checkpoint.savepoint.Savepoint
-import org.apache.flink.runtime.checkpoint._
+import org.apache.flink.runtime.checkpoint.{Checkpoints, CompletedCheckpoint}
 import org.apache.flink.runtime.execution.ExecutionState
 import org.apache.flink.runtime.jobgraph.JobStatus
 import org.apache.flink.runtime.jobmanager.JobManager
@@ -323,9 +324,9 @@ trait TestingJobManagerLike extends FlinkActor {
           flinkConfiguration, classloader, null)
         val backend = if (loadedBackend != null) loadedBackend else new MemoryStateBackend()
 
-        val checkpointLocation = backend.resolveCheckpoint(savepointPath)
+        val metadataHandle = backend.resolveCheckpoint(savepointPath)
 
-        val stream = new DataInputStream(checkpointLocation.getMetadataHandle.openInputStream())
+        val stream = new DataInputStream(metadataHandle.openInputStream())
         val savepoint = try {
           Checkpoints.loadCheckpointMetadata(stream, classloader)
         }
@@ -354,7 +355,7 @@ trait TestingJobManagerLike extends FlinkActor {
         }
       }
 
-    case CheckpointRequest(jobId, retentionPolicy) =>
+    case CheckpointRequest(jobId, checkpointOptions) =>
       currentJobs.get(jobId) match {
         case Some((graph, _)) =>
           val checkpointCoordinator = graph.getCheckpointCoordinator()
@@ -365,34 +366,34 @@ trait TestingJobManagerLike extends FlinkActor {
             try {
               // Do this async, because checkpoint coordinator operations can
               // contain blocking calls to the state backend or ZooKeeper.
-              val triggerResult = checkpointCoordinator.triggerCheckpoint(
+              val cpFuture = checkpointCoordinator.triggerCheckpoint(
                 System.currentTimeMillis(),
-                CheckpointProperties.forCheckpoint(retentionPolicy),
-                null,
-                false)
+                checkpointOptions)
 
-              if (triggerResult.isSuccess) {
-                triggerResult.getPendingCheckpoint.getCompletionFuture.handleAsync[Void](
-                  new BiFunction[CompletedCheckpoint, Throwable, Void] {
-                    override def apply(success: CompletedCheckpoint, cause: Throwable): Void = {
-                      if (success != null) {
+              cpFuture.handleAsync[Void](
+                new BiFunction[CompletedCheckpoint, Throwable, Void] {
+                  override def apply(success: CompletedCheckpoint, cause: Throwable): Void = {
+                    if (success != null) {
+                      if (success.getExternalPointer == null &&
+                        CheckpointType.SAVEPOINT.equals(checkpointOptions.getCheckpointType)) {
+                        senderRef ! CheckpointRequestFailure(
+                          jobId, new Exception("Savepoint has not been persisted.")
+                        )
+                      } else {
                         senderRef ! CheckpointRequestSuccess(
                           jobId,
                           success.getCheckpointID,
                           success.getExternalPointer,
                           success.getTimestamp)
-                      } else {
-                        senderRef ! CheckpointRequestFailure(
-                          jobId, new Exception("Failed to complete checkpoint", cause))
                       }
-                      null
+                    } else {
+                      senderRef ! CheckpointRequestFailure(
+                        jobId, new Exception("Failed to complete checkpoint", cause))
                     }
-                  },
-                  context.dispatcher)
-              } else {
-                senderRef ! CheckpointRequestFailure(jobId, new Exception(
-                  "Failed to trigger checkpoint: " +  triggerResult.getFailureReason.message()))
-              }
+                    null
+                  }
+                },
+                context.dispatcher)
             } catch {
               case e: Exception =>
                 senderRef ! CheckpointRequestFailure(jobId, new Exception(

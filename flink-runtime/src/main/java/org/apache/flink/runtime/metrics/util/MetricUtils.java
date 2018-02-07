@@ -83,10 +83,7 @@ public class MetricUtils {
 
 		// Initialize the TM metrics
 		instantiateStatusMetrics(statusGroup);
-
-		MetricGroup networkGroup = statusGroup
-			.addGroup("Network");
-		instantiateNetworkMetrics(networkGroup, network);
+		instantiateNetworkMetrics(statusGroup, network);
 
 		return taskManagerMetricGroup;
 	}

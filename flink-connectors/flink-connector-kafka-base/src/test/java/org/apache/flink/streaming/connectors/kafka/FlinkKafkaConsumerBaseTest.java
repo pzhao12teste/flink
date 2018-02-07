@@ -640,8 +640,7 @@ public class FlinkKafkaConsumerBaseTest {
 					Collections.singletonList("dummy-topic"),
 					null,
 					(KeyedDeserializationSchema < T >) mock(KeyedDeserializationSchema.class),
-					PARTITION_DISCOVERY_DISABLED,
-					false);
+					PARTITION_DISCOVERY_DISABLED);
 
 			this.testFetcher = testFetcher;
 			this.testPartitionDiscoverer = testPartitionDiscoverer;
@@ -656,9 +655,7 @@ public class FlinkKafkaConsumerBaseTest {
 				SerializedValue<AssignerWithPeriodicWatermarks<T>> watermarksPeriodic,
 				SerializedValue<AssignerWithPunctuatedWatermarks<T>> watermarksPunctuated,
 				StreamingRuntimeContext runtimeContext,
-				OffsetCommitMode offsetCommitMode,
-				MetricGroup consumerMetricGroup,
-				boolean useMetrics) throws Exception {
+				OffsetCommitMode offsetCommitMode) throws Exception {
 			return this.testFetcher;
 		}
 
@@ -755,7 +752,6 @@ public class FlinkKafkaConsumerBaseTest {
 					new TestProcessingTimeService(),
 					0,
 					MockFetcher.class.getClassLoader(),
-					new UnregisteredMetricsGroup(),
 					false);
 
 			this.stateSnapshotsToReturn.addAll(Arrays.asList(stateSnapshotsToReturn));

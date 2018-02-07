@@ -29,7 +29,7 @@ import javax.annotation.Nullable;
 public interface AsynchronouslyCreatedResource<T> extends ResponseBody {
 
 	/**
-	 * Returns the status of the resource creation.
+	 * Retuns the status of the resource creation.
 	 */
 	QueueStatus queueStatus();
 

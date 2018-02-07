@@ -24,10 +24,10 @@ import org.apache.flink.runtime.checkpoint.savepoint.SavepointV2;
 import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.runtime.executiongraph.ExecutionVertex;
 import org.apache.flink.runtime.jobgraph.OperatorID;
-import org.apache.flink.runtime.state.CheckpointMetadataOutputStream;
 import org.apache.flink.runtime.state.CheckpointStorageLocation;
-import org.apache.flink.runtime.state.CompletedCheckpointStorageLocation;
+import org.apache.flink.runtime.state.CheckpointStreamFactory.CheckpointStateOutputStream;
 import org.apache.flink.runtime.state.StateUtil;
+import org.apache.flink.runtime.state.StreamStateHandle;
 import org.apache.flink.util.ExceptionUtils;
 import org.apache.flink.util.Preconditions;
 
@@ -253,12 +253,14 @@ public class PendingCheckpoint {
 			try {
 				// write out the metadata
 				final Savepoint savepoint = new SavepointV2(checkpointId, operatorStates.values(), masterState);
-				final CompletedCheckpointStorageLocation finalizedLocation;
+				final StreamStateHandle metadataHandle;
 
-				try (CheckpointMetadataOutputStream out = targetLocation.createMetadataOutputStream()) {
+				try (CheckpointStateOutputStream out = targetLocation.createMetadataOutputStream()) {
 					Checkpoints.storeCheckpointMetadata(savepoint, out);
-					finalizedLocation = out.closeAndFinalizeCheckpoint();
+					metadataHandle = out.closeAndGetHandle();
 				}
+
+				final String externalPointer = targetLocation.markCheckpointAsFinished();
 
 				CompletedCheckpoint completed = new CompletedCheckpoint(
 						jobId,
@@ -268,7 +270,8 @@ public class PendingCheckpoint {
 						operatorStates,
 						masterState,
 						props,
-						finalizedLocation);
+						metadataHandle,
+						externalPointer);
 
 				onCompletionPromise.complete(completed);
 
@@ -278,7 +281,7 @@ public class PendingCheckpoint {
 					// Finalize the statsCallback and give the completed checkpoint a
 					// callback for discards.
 					CompletedCheckpointStats.DiscardCallback discardCallback =
-							statsCallback.reportCompletedCheckpoint(finalizedLocation.getExternalPointer());
+							statsCallback.reportCompletedCheckpoint(externalPointer);
 					completed.setDiscardCallback(discardCallback);
 				}
 

@@ -25,7 +25,6 @@ import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.typeutils.runtime.DataInputViewStream;
 import org.apache.flink.core.memory.DataInputView;
 import org.apache.flink.core.memory.DataOutputView;
-import org.apache.flink.util.InstantiationUtil;
 import org.apache.flink.util.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -169,8 +168,8 @@ public class OperatorBackendStateMetaInfoSnapshotReaderWriters {
 			DataInputViewStream dis = new DataInputViewStream(in);
 			ClassLoader previousClassLoader = Thread.currentThread().getContextClassLoader();
 			try (
-				InstantiationUtil.FailureTolerantObjectInputStream ois =
-					new InstantiationUtil.FailureTolerantObjectInputStream(dis, userCodeClassLoader)) {
+				TypeSerializerSerializationUtil.FailureTolerantObjectInputStream ois =
+					new TypeSerializerSerializationUtil.FailureTolerantObjectInputStream(dis, userCodeClassLoader)) {
 
 				Thread.currentThread().setContextClassLoader(userCodeClassLoader);
 				TypeSerializer<S> stateSerializer = (TypeSerializer<S>) ois.readObject();

@@ -18,17 +18,16 @@
 
 package org.apache.flink.runtime.state;
 
+import org.apache.flink.runtime.state.CheckpointStreamFactory.CheckpointStateOutputStream;
+
 import java.io.IOException;
 
 /**
- * A storage location for one particular checkpoint, offering data persistent, metadata persistence,
- * and lifecycle/cleanup methods.
- *
- * <p>CheckpointStorageLocations are typically created and initialized via
- * {@link CheckpointStorage#initializeLocationForCheckpoint(long)} or
+ * A storage location for one particular checkpoint. This location is typically
+ * created and initialized via {@link CheckpointStorage#initializeLocationForCheckpoint(long)} or
  * {@link CheckpointStorage#initializeLocationForSavepoint(long, String)}.
  */
-public interface CheckpointStorageLocation extends CheckpointStreamFactory {
+public interface CheckpointStorageLocation {
 
 	/**
 	 * Creates the output stream to persist the checkpoint metadata to.
@@ -36,22 +35,31 @@ public interface CheckpointStorageLocation extends CheckpointStreamFactory {
 	 * @return The output stream to persist the checkpoint metadata to.
 	 * @throws IOException Thrown, if the stream cannot be opened due to an I/O error.
 	 */
-	CheckpointMetadataOutputStream createMetadataOutputStream() throws IOException;
+	CheckpointStateOutputStream createMetadataOutputStream() throws IOException;
+
+	/**
+	 * Finalizes the checkpoint, marking the location as a finished checkpoint.
+	 * This method returns the external checkpoint pointer that can be used to resolve
+	 * the checkpoint upon recovery.
+	 *
+	 * @return The external pointer to the checkpoint at this location.
+	 * @throws IOException Thrown, if finalizing / marking as finished fails due to an I/O error.
+	 */
+	String markCheckpointAsFinished() throws IOException;
 
 	/**
 	 * Disposes the checkpoint location in case the checkpoint has failed.
-	 * This method disposes all the data at that location, not just the data written
-	 * by the particular node or process that calls this method.
 	 */
 	void disposeOnFailure() throws IOException;
 
 	/**
-	 * Gets a reference to the storage location. This reference is sent to the
-	 * target storage location via checkpoint RPC messages and checkpoint barriers,
-	 * in a format avoiding backend-specific classes.
+	 * Gets the location encoded as a string pointer.
 	 *
-	 * <p>If there is no custom location information that needs to be communicated,
-	 * this method can simply return {@link CheckpointStorageLocationReference#getDefault()}.
+	 * <p>This pointer is used to send the target storage location via checkpoint RPC messages
+	 * and checkpoint barriers, in a format avoiding backend-specific classes.
+	 *
+	 * <p>That string encodes the location typically in a backend-specific way.
+	 * For example, file-based backends can encode paths here.
 	 */
-	CheckpointStorageLocationReference getLocationReference();
+	String getLocationAsPointer();
 }

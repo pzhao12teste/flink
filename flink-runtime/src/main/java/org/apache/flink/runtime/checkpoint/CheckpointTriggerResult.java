@@ -24,7 +24,7 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  * The result of triggering a checkpoint. May either be a declined checkpoint
  * trigger attempt, or a pending checkpoint.
  */
-public class CheckpointTriggerResult {
+class CheckpointTriggerResult {
 
 	/** If success, the pending checkpoint created after the successfully trigger, otherwise null */
 	private final PendingCheckpoint success;
