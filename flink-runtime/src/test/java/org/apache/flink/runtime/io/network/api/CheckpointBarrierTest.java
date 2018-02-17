@@ -18,17 +18,14 @@
 
 package org.apache.flink.runtime.io.network.api;
 
+import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.core.memory.DataInputDeserializer;
 import org.apache.flink.core.memory.DataOutputSerializer;
-import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 
 import org.junit.Test;
 
 import static org.junit.Assert.fail;
 
-/**
- * Tests for the {@link CheckpointBarrier} type.
- */
 public class CheckpointBarrierTest {
 
 	/**
@@ -40,7 +37,7 @@ public class CheckpointBarrierTest {
 		long id = Integer.MAX_VALUE + 123123L;
 		long timestamp = Integer.MAX_VALUE + 1228L;
 
-		CheckpointOptions options = CheckpointOptions.forCheckpointWithDefaultLocation();
+		CheckpointOptions options = CheckpointOptions.forCheckpoint();
 		CheckpointBarrier barrier = new CheckpointBarrier(id, timestamp, options);
 
 		try {

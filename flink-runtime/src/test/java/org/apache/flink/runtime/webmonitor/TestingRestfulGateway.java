@@ -25,15 +25,12 @@ import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import org.apache.flink.runtime.concurrent.FutureUtils;
 import org.apache.flink.runtime.executiongraph.AccessExecutionGraph;
 import org.apache.flink.runtime.jobgraph.JobStatus;
-import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.messages.webmonitor.ClusterOverview;
 import org.apache.flink.runtime.messages.webmonitor.MultipleJobsDetails;
-import org.apache.flink.runtime.rest.handler.legacy.backpressure.OperatorBackPressureStatsResponse;
 
 import java.util.Collection;
 import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -48,7 +45,6 @@ public class TestingRestfulGateway implements RestfulGateway {
 	static final Supplier<CompletableFuture<ClusterOverview>> DEFAULT_REQUEST_CLUSTER_OVERVIEW_SUPPLIER = () -> CompletableFuture.completedFuture(new ClusterOverview(0, 0, 0, 0, 0, 0, 0));
 	static final Supplier<CompletableFuture<Collection<String>>> DEFAULT_REQUEST_METRIC_QUERY_SERVICE_PATHS_SUPPLIER = () -> CompletableFuture.completedFuture(Collections.emptyList());
 	static final Supplier<CompletableFuture<Collection<Tuple2<ResourceID, String>>>> DEFAULT_REQUEST_TASK_MANAGER_METRIC_QUERY_SERVICE_PATHS_SUPPLIER = () -> CompletableFuture.completedFuture(Collections.emptyList());
-	static final BiFunction<JobID, JobVertexID, CompletableFuture<OperatorBackPressureStatsResponse>> DEFAULT_REQUEST_OPERATOR_BACK_PRESSURE_STATS_SUPPLIER = (jobId, jobVertexId) -> FutureUtils.completedExceptionally(new UnsupportedOperationException());
 	static final String LOCALHOST = "localhost";
 
 	protected String address;
@@ -69,8 +65,6 @@ public class TestingRestfulGateway implements RestfulGateway {
 
 	protected Supplier<CompletableFuture<Collection<Tuple2<ResourceID, String>>>> requestTaskManagerMetricQueryServicePathsSupplier;
 
-	protected BiFunction<JobID, JobVertexID, CompletableFuture<OperatorBackPressureStatsResponse>> requestOperatorBackPressureStatsFunction;
-
 	public TestingRestfulGateway() {
 		this(
 			LOCALHOST,
@@ -81,8 +75,7 @@ public class TestingRestfulGateway implements RestfulGateway {
 			DEFAULT_REQUEST_MULTIPLE_JOB_DETAILS_SUPPLIER,
 			DEFAULT_REQUEST_CLUSTER_OVERVIEW_SUPPLIER,
 			DEFAULT_REQUEST_METRIC_QUERY_SERVICE_PATHS_SUPPLIER,
-			DEFAULT_REQUEST_TASK_MANAGER_METRIC_QUERY_SERVICE_PATHS_SUPPLIER,
-			DEFAULT_REQUEST_OPERATOR_BACK_PRESSURE_STATS_SUPPLIER);
+			DEFAULT_REQUEST_TASK_MANAGER_METRIC_QUERY_SERVICE_PATHS_SUPPLIER);
 	}
 
 	public TestingRestfulGateway(
@@ -94,8 +87,7 @@ public class TestingRestfulGateway implements RestfulGateway {
 			Supplier<CompletableFuture<MultipleJobsDetails>> requestMultipleJobDetailsSupplier,
 			Supplier<CompletableFuture<ClusterOverview>> requestClusterOverviewSupplier,
 			Supplier<CompletableFuture<Collection<String>>> requestMetricQueryServicePathsSupplier,
-			Supplier<CompletableFuture<Collection<Tuple2<ResourceID, String>>>> requestTaskManagerMetricQueryServicePathsSupplier,
-			BiFunction<JobID, JobVertexID, CompletableFuture<OperatorBackPressureStatsResponse>> requestOperatorBackPressureStatsFunction) {
+			Supplier<CompletableFuture<Collection<Tuple2<ResourceID, String>>>> requestTaskManagerMetricQueryServicePathsSupplier) {
 		this.address = address;
 		this.hostname = hostname;
 		this.restAddress = restAddress;
@@ -105,7 +97,6 @@ public class TestingRestfulGateway implements RestfulGateway {
 		this.requestClusterOverviewSupplier = requestClusterOverviewSupplier;
 		this.requestMetricQueryServicePathsSupplier = requestMetricQueryServicePathsSupplier;
 		this.requestTaskManagerMetricQueryServicePathsSupplier = requestTaskManagerMetricQueryServicePathsSupplier;
-		this.requestOperatorBackPressureStatsFunction = requestOperatorBackPressureStatsFunction;
 	}
 
 	@Override
@@ -144,11 +135,6 @@ public class TestingRestfulGateway implements RestfulGateway {
 	}
 
 	@Override
-	public CompletableFuture<OperatorBackPressureStatsResponse> requestOperatorBackPressureStats(final JobID jobId, final JobVertexID jobVertexId) {
-		return requestOperatorBackPressureStatsFunction.apply(jobId, jobVertexId);
-	}
-
-	@Override
 	public String getAddress() {
 		return address;
 	}
@@ -175,7 +161,6 @@ public class TestingRestfulGateway implements RestfulGateway {
 		private Supplier<CompletableFuture<ClusterOverview>> requestClusterOverviewSupplier;
 		private Supplier<CompletableFuture<Collection<String>>> requestMetricQueryServicePathsSupplier;
 		private Supplier<CompletableFuture<Collection<Tuple2<ResourceID, String>>>> requestTaskManagerMetricQueryServicePathsSupplier;
-		private BiFunction<JobID, JobVertexID, CompletableFuture<OperatorBackPressureStatsResponse>> requestOeratorBackPressureStatsFunction;
 
 		public Builder() {
 			requestJobFunction = DEFAULT_REQUEST_JOB_FUNCTION;
@@ -184,7 +169,6 @@ public class TestingRestfulGateway implements RestfulGateway {
 			requestClusterOverviewSupplier = DEFAULT_REQUEST_CLUSTER_OVERVIEW_SUPPLIER;
 			requestMetricQueryServicePathsSupplier = DEFAULT_REQUEST_METRIC_QUERY_SERVICE_PATHS_SUPPLIER;
 			requestTaskManagerMetricQueryServicePathsSupplier = DEFAULT_REQUEST_TASK_MANAGER_METRIC_QUERY_SERVICE_PATHS_SUPPLIER;
-			requestOeratorBackPressureStatsFunction = DEFAULT_REQUEST_OPERATOR_BACK_PRESSURE_STATS_SUPPLIER;
 		}
 
 		public Builder setAddress(String address) {
@@ -232,13 +216,8 @@ public class TestingRestfulGateway implements RestfulGateway {
 			return this;
 		}
 
-		public Builder setRequestOeratorBackPressureStatsFunction(BiFunction<JobID, JobVertexID, CompletableFuture<OperatorBackPressureStatsResponse>> requestOeratorBackPressureStatsFunction) {
-			this.requestOeratorBackPressureStatsFunction = requestOeratorBackPressureStatsFunction;
-			return this;
-		}
-
 		public TestingRestfulGateway build() {
-			return new TestingRestfulGateway(address, hostname, restAddress, requestJobFunction, requestJobStatusFunction, requestMultipleJobDetailsSupplier, requestClusterOverviewSupplier, requestMetricQueryServicePathsSupplier, requestTaskManagerMetricQueryServicePathsSupplier, requestOeratorBackPressureStatsFunction);
+			return new TestingRestfulGateway(address, hostname, restAddress, requestJobFunction, requestJobStatusFunction, requestMultipleJobDetailsSupplier, requestClusterOverviewSupplier, requestMetricQueryServicePathsSupplier, requestTaskManagerMetricQueryServicePathsSupplier);
 		}
 	}
 }

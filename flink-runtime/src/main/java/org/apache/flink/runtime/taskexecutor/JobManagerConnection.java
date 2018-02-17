@@ -19,6 +19,7 @@
 package org.apache.flink.runtime.taskexecutor;
 
 import org.apache.flink.api.common.JobID;
+import org.apache.flink.runtime.blob.BlobCacheService;
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import org.apache.flink.runtime.execution.librarycache.LibraryCacheManager;
 import org.apache.flink.runtime.io.network.netty.PartitionProducerStateChecker;
@@ -49,6 +50,9 @@ public class JobManagerConnection {
 	// Checkpoint responder for the specific job manager
 	private final CheckpointResponder checkpointResponder;
 
+	// BLOB cache connected to the BLOB server at the specific job manager
+	private final BlobCacheService blobService;
+
 	// Library cache manager connected to the specific job manager
 	private final LibraryCacheManager libraryCacheManager;
 
@@ -64,7 +68,7 @@ public class JobManagerConnection {
 				JobMasterGateway jobMasterGateway,
 				TaskManagerActions taskManagerActions,
 				CheckpointResponder checkpointResponder,
-				LibraryCacheManager libraryCacheManager,
+				BlobCacheService blobService, LibraryCacheManager libraryCacheManager,
 				ResultPartitionConsumableNotifier resultPartitionConsumableNotifier,
 				PartitionProducerStateChecker partitionStateChecker) {
 		this.jobID = Preconditions.checkNotNull(jobID);
@@ -72,6 +76,7 @@ public class JobManagerConnection {
 		this.jobMasterGateway = Preconditions.checkNotNull(jobMasterGateway);
 		this.taskManagerActions = Preconditions.checkNotNull(taskManagerActions);
 		this.checkpointResponder = Preconditions.checkNotNull(checkpointResponder);
+		this.blobService = Preconditions.checkNotNull(blobService);
 		this.libraryCacheManager = Preconditions.checkNotNull(libraryCacheManager);
 		this.resultPartitionConsumableNotifier = Preconditions.checkNotNull(resultPartitionConsumableNotifier);
 		this.partitionStateChecker = Preconditions.checkNotNull(partitionStateChecker);
@@ -103,6 +108,15 @@ public class JobManagerConnection {
 
 	public LibraryCacheManager getLibraryCacheManager() {
 		return libraryCacheManager;
+	}
+
+	/**
+	 * Gets the BLOB cache connected to the respective BLOB server instance at the job manager.
+	 *
+	 * @return BLOB cache
+	 */
+	public BlobCacheService getBlobService() {
+		return blobService;
 	}
 
 	public ResultPartitionConsumableNotifier getResultPartitionConsumableNotifier() {

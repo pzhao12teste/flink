@@ -105,11 +105,11 @@ public class BlobCacheRecoveryTest extends TestLogger {
 			BlobServer server1 = new BlobServer(config, blobStore);
 			// use VoidBlobStore as the HA store to force download from each server's HA store
 			BlobCacheService cache0 = new BlobCacheService(
-				config, new VoidBlobStore(), new InetSocketAddress("localhost", server0.getPort())
-			);
+				new InetSocketAddress("localhost", server0.getPort()), config,
+				new VoidBlobStore());
 			BlobCacheService cache1 = new BlobCacheService(
-				config, new VoidBlobStore(), new InetSocketAddress("localhost", server1.getPort())
-			)) {
+				new InetSocketAddress("localhost", server1.getPort()), config,
+				new VoidBlobStore())) {
 
 			server0.start();
 			server1.start();

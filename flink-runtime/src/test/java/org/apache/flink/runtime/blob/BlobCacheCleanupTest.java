@@ -91,7 +91,7 @@ public class BlobCacheCleanupTest extends TestLogger {
 			server = new BlobServer(config, new VoidBlobStore());
 			server.start();
 			InetSocketAddress serverAddress = new InetSocketAddress("localhost", server.getPort());
-			cache = new PermanentBlobCache(config, new VoidBlobStore(), serverAddress);
+			cache = new PermanentBlobCache(serverAddress, config, new VoidBlobStore());
 
 			// upload blobs
 			keys.add(server.putPermanent(jobId, buf));
@@ -164,7 +164,7 @@ public class BlobCacheCleanupTest extends TestLogger {
 		// NOTE: use fake address - we will not connect to it here
 		InetSocketAddress serverAddress = new InetSocketAddress("localhost", 12345);
 
-		try (PermanentBlobCache cache = new PermanentBlobCache(config, new VoidBlobStore(), serverAddress)) {
+		try (PermanentBlobCache cache = new PermanentBlobCache(serverAddress, config, new VoidBlobStore())) {
 
 			// register once
 			cache.registerJob(jobId);
@@ -231,7 +231,7 @@ public class BlobCacheCleanupTest extends TestLogger {
 			server = new BlobServer(config, new VoidBlobStore());
 			server.start();
 			InetSocketAddress serverAddress = new InetSocketAddress("localhost", server.getPort());
-			cache = new PermanentBlobCache(config, new VoidBlobStore(), serverAddress);
+			cache = new PermanentBlobCache(serverAddress, config, new VoidBlobStore());
 
 			// upload blobs
 			keys.add(server.putPermanent(jobId, buf));
@@ -339,8 +339,8 @@ public class BlobCacheCleanupTest extends TestLogger {
 		try (
 			BlobServer server = new BlobServer(config, new VoidBlobStore());
 			final BlobCacheService cache = new BlobCacheService(
-				config, new VoidBlobStore(), new InetSocketAddress("localhost", server.getPort())
-			)) {
+				new InetSocketAddress("localhost", server.getPort()), config,
+				new VoidBlobStore())) {
 			ConcurrentMap<Tuple2<JobID, TransientBlobKey>, Long> transientBlobExpiryTimes =
 				cache.getTransientBlobService().getBlobExpiryTimes();
 

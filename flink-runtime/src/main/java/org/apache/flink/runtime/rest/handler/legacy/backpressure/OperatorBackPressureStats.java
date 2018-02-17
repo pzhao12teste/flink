@@ -18,7 +18,6 @@
 
 package org.apache.flink.runtime.rest.handler.legacy.backpressure;
 
-import java.io.Serializable;
 import java.util.Arrays;
 
 import static org.apache.flink.util.Preconditions.checkArgument;
@@ -31,9 +30,7 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  * back pressure ratio denotes the ratio of traces indicating back pressure
  * to the total number of sampled traces.
  */
-public class OperatorBackPressureStats implements Serializable {
-
-	private static final long serialVersionUID = 1L;
+public class OperatorBackPressureStats {
 
 	/** ID of the corresponding sample. */
 	private final int sampleId;

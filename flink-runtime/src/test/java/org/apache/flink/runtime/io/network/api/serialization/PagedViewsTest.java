@@ -20,11 +20,11 @@ package org.apache.flink.runtime.io.network.api.serialization;
 
 import org.apache.flink.core.memory.MemorySegment;
 import org.apache.flink.core.memory.MemorySegmentFactory;
-import org.apache.flink.runtime.memory.AbstractPagedInputView;
-import org.apache.flink.runtime.memory.AbstractPagedOutputView;
 import org.apache.flink.testutils.serialization.types.SerializationTestType;
 import org.apache.flink.testutils.serialization.types.SerializationTestTypeFactory;
 import org.apache.flink.testutils.serialization.types.Util;
+import org.apache.flink.runtime.memory.AbstractPagedInputView;
+import org.apache.flink.runtime.memory.AbstractPagedOutputView;
 
 import org.junit.Test;
 
@@ -39,17 +39,14 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-/**
- * Tests for the {@link AbstractPagedInputView} and {@link AbstractPagedOutputView}.
- */
 public class PagedViewsTest {
 
 	@Test
 	public void testSequenceOfIntegersWithAlignedBuffers() {
 		try {
-			final int numInts = 1000000;
+			final int NUM_INTS = 1000000;
 
-			testSequenceOfTypes(Util.randomRecords(numInts, SerializationTestTypeFactory.INT), 2048);
+			testSequenceOfTypes(Util.randomRecords(NUM_INTS, SerializationTestTypeFactory.INT), 2048);
 
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -60,9 +57,9 @@ public class PagedViewsTest {
 	@Test
 	public void testSequenceOfIntegersWithUnalignedBuffers() {
 		try {
-			final int numInts = 1000000;
+			final int NUM_INTS = 1000000;
 
-			testSequenceOfTypes(Util.randomRecords(numInts, SerializationTestTypeFactory.INT), 2047);
+			testSequenceOfTypes(Util.randomRecords(NUM_INTS, SerializationTestTypeFactory.INT), 2047);
 
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -73,10 +70,10 @@ public class PagedViewsTest {
 	@Test
 	public void testRandomTypes() {
 		try {
-			final int numTypes = 100000;
+			final int NUM_TYPES = 100000;
 
 			// test with an odd buffer size to force many unaligned cases
-			testSequenceOfTypes(Util.randomRecords(numTypes), 57);
+			testSequenceOfTypes(Util.randomRecords(NUM_TYPES), 57);
 
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -94,7 +91,7 @@ public class PagedViewsTest {
 
 		try {
 			outputView.write(expected);
-		} catch (Exception e) {
+		}catch(Exception e){
 			e.printStackTrace();
 			fail("Unexpected exception: Could not write to TestOutputView.");
 		}
@@ -126,7 +123,7 @@ public class PagedViewsTest {
 
 		try {
 			outputView.write(expected);
-		} catch (Exception e) {
+		}catch(Exception e){
 			e.printStackTrace();
 			fail("Unexpected exception: Could not write to TestOutputView.");
 		}
@@ -159,7 +156,7 @@ public class PagedViewsTest {
 
 		try {
 			outputView.write(expected);
-		} catch (Exception e) {
+		}catch(Exception e){
 			e.printStackTrace();
 			fail("Unexpected exception: Could not write to TestOutputView.");
 		}
@@ -181,7 +178,7 @@ public class PagedViewsTest {
 		assertEquals(inputView.getCurrentPositionInSegment(), bytes2Write % segmentSize);
 
 		byte[] tempBuffer = new byte[bytesRead];
-		System.arraycopy(buffer, 0, tempBuffer, 0, bytesRead);
+		System.arraycopy(buffer,0,tempBuffer,0,bytesRead);
 		assertArrayEquals(expected, tempBuffer);
 	}
 
@@ -197,7 +194,7 @@ public class PagedViewsTest {
 
 		try {
 			outputView.write(expected);
-		} catch (Exception e){
+		}catch(Exception e){
 			e.printStackTrace();
 			fail("Unexpected exception: Could not write to TestOutputView.");
 		}
@@ -218,12 +215,12 @@ public class PagedViewsTest {
 		assertEquals(bytes2Write, bytesRead);
 
 		byte[] tempBuffer = new byte[bytesRead];
-		System.arraycopy(buffer, 0, tempBuffer, 0, bytesRead);
+		System.arraycopy(buffer,0,tempBuffer,0,bytesRead);
 		assertArrayEquals(expected, tempBuffer);
 
-		try {
+		try{
 			bytesRead = inputView.read(buffer);
-		} catch (IOException e){
+		}catch(IOException e){
 			e.printStackTrace();
 			fail("Unexpected exception: Input view should be empty and thus return -1.");
 		}
@@ -244,7 +241,7 @@ public class PagedViewsTest {
 
 		try {
 			outputView.write(expected);
-		} catch (Exception e) {
+		}catch(Exception e){
 			e.printStackTrace();
 			fail("Unexpected exception: Could not write to TestOutputView.");
 		}
@@ -257,7 +254,7 @@ public class PagedViewsTest {
 
 		try {
 			inputView.readFully(buffer);
-		} catch (EOFException e) {
+		}catch(EOFException e){
 			//Expected exception
 			eofException = true;
 		}
@@ -270,9 +267,9 @@ public class PagedViewsTest {
 
 		int bytesRead = 0;
 
-		try {
-			bytesRead = inputView.read(buffer);
-		} catch (Exception e) {
+		try{
+			bytesRead =inputView.read(buffer);
+		}catch(Exception e){
 			e.printStackTrace();
 			fail("Unexpected exception: Could not read TestInputView.");
 		}
@@ -291,7 +288,7 @@ public class PagedViewsTest {
 
 		try {
 			outputView.write(expected);
-		} catch (Exception e) {
+		}catch(Exception e){
 			e.printStackTrace();
 			fail("Unexpected exception: Could not write to TestOutputView.");
 		}
@@ -299,7 +296,7 @@ public class PagedViewsTest {
 		outputView.close();
 
 		TestInputView inputView = new TestInputView(outputView.segments);
-		byte[] buffer = new byte[2 * bufferSize];
+		byte[] buffer = new byte[2*bufferSize];
 
 		try {
 			inputView.readFully(buffer, bufferSize, bufferSize);
@@ -310,7 +307,7 @@ public class PagedViewsTest {
 
 		assertEquals(inputView.getCurrentPositionInSegment(), bufferSize % segmentSize);
 		byte[] tempBuffer = new byte[bufferSize];
-		System.arraycopy(buffer, bufferSize, tempBuffer, 0, bufferSize);
+		System.arraycopy(buffer, bufferSize, tempBuffer,0, bufferSize);
 		assertArrayEquals(expected, tempBuffer);
 	}
 
@@ -324,12 +321,12 @@ public class PagedViewsTest {
 		byte[] buffer = new byte[segmentSize];
 		boolean eofException = false;
 
-		try {
+		try{
 			inputView.readFully(buffer);
-		} catch (EOFException e) {
+		}catch(EOFException e){
 			//expected Exception
 			eofException = true;
-		} catch (Exception e) {
+		}catch(Exception e){
 			e.printStackTrace();
 			fail("Unexpected exception: Could not read TestInputView.");
 		}
@@ -337,9 +334,10 @@ public class PagedViewsTest {
 		assertTrue("EOFException expected.", eofException);
 	}
 
+
 	private static void testSequenceOfTypes(Iterable<SerializationTestType> sequence, int segmentSize) throws Exception {
 
-		List<SerializationTestType> elements = new ArrayList<>(512);
+		List<SerializationTestType> elements = new ArrayList<SerializationTestType>(512);
 		TestOutputView outView = new TestOutputView(segmentSize);
 
 		// write
@@ -375,7 +373,7 @@ public class PagedViewsTest {
 
 	private static final class TestOutputView extends AbstractPagedOutputView {
 
-		private final List<SegmentWithPosition> segments = new ArrayList<>();
+		private final List<SegmentWithPosition> segments = new ArrayList<SegmentWithPosition>();
 
 		private final int segmentSize;
 
@@ -401,6 +399,7 @@ public class PagedViewsTest {
 		private final List<SegmentWithPosition> segments;
 
 		private int num;
+
 
 		private TestInputView(List<SegmentWithPosition> segments) {
 			super(segments.get(0).segment, segments.get(0).position, 0);

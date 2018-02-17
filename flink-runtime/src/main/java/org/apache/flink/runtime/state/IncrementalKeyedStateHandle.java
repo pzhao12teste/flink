@@ -141,10 +141,6 @@ public class IncrementalKeyedStateHandle implements KeyedStateHandle {
 		return backendIdentifier;
 	}
 
-	public SharedStateRegistry getSharedStateRegistry() {
-		return sharedStateRegistry;
-	}
-
 	@Override
 	public KeyedStateHandle getIntersection(KeyGroupRange keyGroupRange) {
 		return KeyGroupRange.EMPTY_KEY_GROUP_RANGE.equals(this.keyGroupRange.getIntersection(keyGroupRange)) ?

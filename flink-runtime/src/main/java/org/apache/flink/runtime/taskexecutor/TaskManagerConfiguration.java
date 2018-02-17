@@ -20,6 +20,7 @@ package org.apache.flink.runtime.taskexecutor;
 
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.configuration.AkkaOptions;
+import org.apache.flink.configuration.BlobServerOptions;
 import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.ConfigurationUtils;
@@ -33,8 +34,6 @@ import org.apache.flink.util.Preconditions;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.annotation.Nullable;
 
 import scala.concurrent.duration.Duration;
 
@@ -64,12 +63,6 @@ public class TaskManagerConfiguration implements TaskManagerRuntimeInfo {
 
 	private final String[] alwaysParentFirstLoaderPatterns;
 
-	@Nullable
-	private final String taskManagerLogPath;
-
-	@Nullable
-	private final String taskManagerStdoutPath;
-
 	public TaskManagerConfiguration(
 		int numberSlots,
 		String[] tmpDirectories,
@@ -78,12 +71,11 @@ public class TaskManagerConfiguration implements TaskManagerRuntimeInfo {
 		Time initialRegistrationPause,
 		Time maxRegistrationPause,
 		Time refusedRegistrationPause,
+		long cleanupInterval,
 		Configuration configuration,
 		boolean exitJvmOnOutOfMemory,
 		FlinkUserCodeClassLoaders.ResolveOrder classLoaderResolveOrder,
-		String[] alwaysParentFirstLoaderPatterns,
-		@Nullable String taskManagerLogPath,
-		@Nullable String taskManagerStdoutPath) {
+		String[] alwaysParentFirstLoaderPatterns) {
 
 		this.numberSlots = numberSlots;
 		this.tmpDirectories = Preconditions.checkNotNull(tmpDirectories);
@@ -96,8 +88,6 @@ public class TaskManagerConfiguration implements TaskManagerRuntimeInfo {
 		this.exitJvmOnOutOfMemory = exitJvmOnOutOfMemory;
 		this.classLoaderResolveOrder = classLoaderResolveOrder;
 		this.alwaysParentFirstLoaderPatterns = alwaysParentFirstLoaderPatterns;
-		this.taskManagerLogPath = taskManagerLogPath;
-		this.taskManagerStdoutPath = taskManagerStdoutPath;
 	}
 
 	public int getNumberSlots() {
@@ -147,16 +137,6 @@ public class TaskManagerConfiguration implements TaskManagerRuntimeInfo {
 		return alwaysParentFirstLoaderPatterns;
 	}
 
-	@Nullable
-	public String getTaskManagerLogPath() {
-		return taskManagerLogPath;
-	}
-
-	@Nullable
-	public String getTaskManagerStdoutPath() {
-		return taskManagerStdoutPath;
-	}
-
 	// --------------------------------------------------------------------------------------------
 	//  Static factory methods
 	// --------------------------------------------------------------------------------------------
@@ -181,6 +161,8 @@ public class TaskManagerConfiguration implements TaskManagerRuntimeInfo {
 		}
 
 		LOG.info("Messages have a max timeout of " + timeout);
+
+		final long cleanupInterval = configuration.getLong(BlobServerOptions.CLEANUP_INTERVAL) * 1000;
 
 		final Time finiteRegistrationDuration;
 
@@ -252,21 +234,6 @@ public class TaskManagerConfiguration implements TaskManagerRuntimeInfo {
 			configuration.getString(CoreOptions.ALWAYS_PARENT_FIRST_LOADER);
 		final String[] alwaysParentFirstLoaderPatterns = alwaysParentFirstLoaderString.split(";");
 
-		final String taskManagerLogPath = configuration.getString(ConfigConstants.TASK_MANAGER_LOG_PATH_KEY, System.getProperty("log.file"));
-		final String taskManagerStdoutPath;
-
-		if (taskManagerLogPath != null) {
-			final int extension = taskManagerLogPath.lastIndexOf('.');
-
-			if (extension > 0) {
-				taskManagerStdoutPath = taskManagerLogPath.substring(0, extension) + ".out";
-			} else {
-				taskManagerStdoutPath = null;
-			}
-		} else {
-			taskManagerStdoutPath = null;
-		}
-
 		return new TaskManagerConfiguration(
 			numberSlots,
 			tmpDirPaths,
@@ -275,11 +242,10 @@ public class TaskManagerConfiguration implements TaskManagerRuntimeInfo {
 			initialRegistrationPause,
 			maxRegistrationPause,
 			refusedRegistrationPause,
+			cleanupInterval,
 			configuration,
 			exitOnOom,
 			FlinkUserCodeClassLoaders.ResolveOrder.fromString(classLoaderResolveOrder),
-			alwaysParentFirstLoaderPatterns,
-			taskManagerLogPath,
-			taskManagerStdoutPath);
+			alwaysParentFirstLoaderPatterns);
 	}
 }

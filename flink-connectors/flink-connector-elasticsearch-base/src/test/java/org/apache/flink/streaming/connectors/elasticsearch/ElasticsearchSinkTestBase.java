@@ -163,7 +163,7 @@ public abstract class ElasticsearchSinkTestBase extends AbstractTestBase {
 		userConfig.put("cluster.name", "my-transport-client-cluster");
 
 		source.addSink(createElasticsearchSinkForEmbeddedNode(
-			Collections.unmodifiableMap(userConfig), new SourceSinkDataTestKit.TestElasticsearchSinkFunction("test")));
+			userConfig, new SourceSinkDataTestKit.TestElasticsearchSinkFunction("test")));
 
 		try {
 			env.execute("Elasticsearch Transport Client Test");

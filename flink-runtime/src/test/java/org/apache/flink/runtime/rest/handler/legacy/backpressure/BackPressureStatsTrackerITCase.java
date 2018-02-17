@@ -32,7 +32,6 @@ import org.apache.flink.runtime.highavailability.HighAvailabilityServicesUtils;
 import org.apache.flink.runtime.instance.ActorGateway;
 import org.apache.flink.runtime.instance.AkkaActorGateway;
 import org.apache.flink.runtime.io.network.buffer.Buffer;
-import org.apache.flink.runtime.io.network.buffer.BufferBuilder;
 import org.apache.flink.runtime.io.network.buffer.BufferPool;
 import org.apache.flink.runtime.io.network.buffer.NetworkBufferPool;
 import org.apache.flink.runtime.jobgraph.JobGraph;
@@ -183,7 +182,6 @@ public class BackPressureStatsTrackerITCase extends TestLogger {
 								coordinator,
 								100 * 1000,
 								20,
-								Integer.MAX_VALUE,
 								Time.milliseconds(10L));
 
 							int numAttempts = 10;
@@ -322,9 +320,9 @@ public class BackPressureStatsTrackerITCase extends TestLogger {
 		@Override
 		public void invoke() throws Exception {
 			while (true) {
-				final BufferBuilder bufferBuilder = testBufferPool.requestBufferBuilderBlocking();
+				Buffer buffer = testBufferPool.requestBufferBlocking();
 				// Got a buffer, yay!
-				bufferBuilder.build().recycleBuffer();
+				buffer.recycleBuffer();
 
 				new CountDownLatch(1).await();
 			}

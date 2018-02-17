@@ -25,6 +25,7 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.util.FlinkException;
 
 import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 
 import javax.annotation.Nullable;
@@ -34,13 +35,19 @@ import javax.annotation.Nullable;
  */
 public class Flip6DefaultCLI extends AbstractCustomCommandLine<StandaloneClusterId> {
 
+	public static final Option FLIP_6 = new Option("flip6", "Switches the client to Flip-6 mode.");
+
+	static {
+		FLIP_6.setRequired(false);
+	}
+
 	public Flip6DefaultCLI(Configuration configuration) {
 		super(configuration);
 	}
 
 	@Override
 	public boolean isActive(CommandLine commandLine) {
-		return true;
+		return commandLine.hasOption(FLIP_6.getOpt());
 	}
 
 	@Override
@@ -51,6 +58,7 @@ public class Flip6DefaultCLI extends AbstractCustomCommandLine<StandaloneCluster
 	@Override
 	public void addGeneralOptions(Options baseOptions) {
 		super.addGeneralOptions(baseOptions);
+		baseOptions.addOption(FLIP_6);
 	}
 
 	@Override

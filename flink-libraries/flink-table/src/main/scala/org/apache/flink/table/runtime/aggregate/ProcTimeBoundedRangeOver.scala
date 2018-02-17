@@ -147,14 +147,13 @@ class ProcTimeBoundedRangeOver(
     // when we find timestamps that are out of interest, we retrieve corresponding elements
     // and eliminate them. Multiple elements could have been received at the same timestamp
     // the removal of old elements happens only once per proctime as onTimer is called only once
-    val iter = rowMapState.iterator
+    val iter = rowMapState.keys.iterator
     val markToRemove = new ArrayList[Long]()
     while (iter.hasNext) {
-      val entry = iter.next()
-      val elementKey = entry.getKey
+      val elementKey = iter.next
       if (elementKey < limit) {
         // element key outside of window. Retract values
-        val elementsRemove = entry.getValue
+        val elementsRemove = rowMapState.get(elementKey)
         var iRemove = 0
         while (iRemove < elementsRemove.size()) {
           val retractRow = elementsRemove.get(iRemove)

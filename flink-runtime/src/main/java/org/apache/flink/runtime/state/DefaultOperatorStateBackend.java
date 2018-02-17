@@ -247,7 +247,7 @@ public class DefaultOperatorStateBackend implements OperatorStateBackend {
 				}
 
 				private void openOutStream() throws Exception {
-					out = streamFactory.createCheckpointStateOutputStream(CheckpointedStateScope.EXCLUSIVE);
+					out = streamFactory.createCheckpointStateOutputStream(checkpointId, timestamp);
 					closeStreamOnCancelRegistry.registerCloseable(out);
 				}
 

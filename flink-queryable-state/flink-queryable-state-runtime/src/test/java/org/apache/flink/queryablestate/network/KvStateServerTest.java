@@ -108,20 +108,19 @@ public class KvStateServerTest {
 			AbstractStateBackend abstractBackend = new MemoryStateBackend();
 			DummyEnvironment dummyEnv = new DummyEnvironment("test", 1, 0);
 			dummyEnv.setKvStateRegistry(registry);
-			final JobID jobId = new JobID();
 			AbstractKeyedStateBackend<Integer> backend = abstractBackend.createKeyedStateBackend(
-				dummyEnv,
-				jobId,
-				"test_op",
-				IntSerializer.INSTANCE,
-				numKeyGroups,
-				new KeyGroupRange(0, 0),
-				registry.createTaskRegistry(jobId, new JobVertexID()));
+					dummyEnv,
+					new JobID(),
+					"test_op",
+					IntSerializer.INSTANCE,
+					numKeyGroups,
+					new KeyGroupRange(0, 0),
+					registry.createTaskRegistry(new JobID(), new JobVertexID()));
 
 			final KvStateServerHandlerTest.TestRegistryListener registryListener =
 					new KvStateServerHandlerTest.TestRegistryListener();
 
-			registry.registerListener(jobId, registryListener);
+			registry.registerListener(registryListener);
 
 			ValueStateDescriptor<Integer> desc = new ValueStateDescriptor<>("any", IntSerializer.INSTANCE);
 			desc.setQueryable("vanilla");

@@ -23,8 +23,6 @@ import org.apache.flink.api.common.time.Time;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.WebOptions;
 import org.apache.flink.runtime.blob.BlobServer;
-import org.apache.flink.runtime.blob.TransientBlobCache;
-import org.apache.flink.runtime.blob.TransientBlobService;
 import org.apache.flink.runtime.clusterframework.ApplicationStatus;
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import org.apache.flink.runtime.executiongraph.ArchivedExecutionGraph;
@@ -63,7 +61,6 @@ import akka.actor.ActorSystem;
 
 import javax.annotation.Nullable;
 
-import java.net.InetSocketAddress;
 import java.util.concurrent.Executor;
 
 /**
@@ -80,8 +77,6 @@ public abstract class JobClusterEntrypoint extends ClusterEntrypoint {
 	private LeaderRetrievalService jobMasterRetrievalService;
 
 	private LeaderRetrievalService resourceManagerRetrievalService;
-
-	private TransientBlobCache transientBlobCache;
 
 	private JobManagerRunner jobManagerRunner;
 
@@ -120,17 +115,10 @@ public abstract class JobClusterEntrypoint extends ClusterEntrypoint {
 		final ActorSystem actorSystem = ((AkkaRpcService) rpcService).getActorSystem();
 		final Time timeout = Time.milliseconds(configuration.getLong(WebOptions.TIMEOUT));
 
-		final ClusterInformation clusterInformation = new ClusterInformation(rpcService.getAddress(), blobServer.getPort());
-
-		transientBlobCache = new TransientBlobCache(
-			configuration,
-			new InetSocketAddress(clusterInformation.getBlobServerHostname(), clusterInformation.getBlobServerPort()));
-
 		jobMasterRestEndpoint = createJobMasterRestEndpoint(
 			configuration,
 			jobMasterGatewayRetriever,
 			resourceManagerGatewayRetriever,
-			transientBlobCache,
 			rpcService.getExecutor(),
 			new AkkaQueryServiceRetriever(actorSystem, timeout),
 			highAvailabilityServices.getWebMonitorLeaderElectionService());
@@ -146,7 +134,6 @@ public abstract class JobClusterEntrypoint extends ClusterEntrypoint {
 			heartbeatServices,
 			metricRegistry,
 			this,
-			clusterInformation,
 			jobMasterRestEndpoint.getRestAddress());
 
 		jobManagerRunner = createJobManagerRunner(
@@ -156,7 +143,6 @@ public abstract class JobClusterEntrypoint extends ClusterEntrypoint {
 			highAvailabilityServices,
 			jobManagerServices,
 			heartbeatServices,
-			blobServer,
 			metricRegistry,
 			this,
 			jobMasterRestEndpoint.getRestAddress());
@@ -178,7 +164,6 @@ public abstract class JobClusterEntrypoint extends ClusterEntrypoint {
 			Configuration configuration,
 			GatewayRetriever<JobMasterGateway> jobMasterGatewayRetriever,
 			GatewayRetriever<ResourceManagerGateway> resourceManagerGatewayRetriever,
-			TransientBlobService transientBlobService,
 			Executor executor,
 			MetricQueryServiceRetriever metricQueryServiceRetriever,
 			LeaderElectionService leaderElectionService) throws ConfigurationException {
@@ -191,7 +176,6 @@ public abstract class JobClusterEntrypoint extends ClusterEntrypoint {
 			configuration,
 			restHandlerConfiguration,
 			resourceManagerGatewayRetriever,
-			transientBlobService,
 			executor,
 			metricQueryServiceRetriever,
 			leaderElectionService,
@@ -206,7 +190,6 @@ public abstract class JobClusterEntrypoint extends ClusterEntrypoint {
 			HighAvailabilityServices highAvailabilityServices,
 			JobManagerServices jobManagerServices,
 			HeartbeatServices heartbeatServices,
-			BlobServer blobServer,
 			MetricRegistry metricRegistry,
 			FatalErrorHandler fatalErrorHandler,
 			@Nullable String restAddress) throws Exception {
@@ -220,7 +203,6 @@ public abstract class JobClusterEntrypoint extends ClusterEntrypoint {
 			rpcService,
 			highAvailabilityServices,
 			heartbeatServices,
-			blobServer,
 			jobManagerServices,
 			metricRegistry,
 			new TerminatingOnCompleteActions(jobGraph.getJobID()),
@@ -276,14 +258,6 @@ public abstract class JobClusterEntrypoint extends ClusterEntrypoint {
 			}
 		}
 
-		if (transientBlobCache != null) {
-			try {
-				transientBlobCache.close();
-			} catch (Throwable t) {
-				exception = ExceptionUtils.firstOrSuppressed(t, exception);
-			}
-		}
-
 		if (exception != null) {
 			throw new FlinkException("Could not properly shut down the job cluster entry point.", exception);
 		}
@@ -314,7 +288,6 @@ public abstract class JobClusterEntrypoint extends ClusterEntrypoint {
 		HeartbeatServices heartbeatServices,
 		MetricRegistry metricRegistry,
 		FatalErrorHandler fatalErrorHandler,
-		ClusterInformation clusterInformation,
 		@Nullable String webInterfaceUrl) throws Exception;
 
 	protected abstract JobGraph retrieveJobGraph(Configuration configuration) throws FlinkException;

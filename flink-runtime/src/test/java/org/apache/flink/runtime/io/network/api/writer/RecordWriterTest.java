@@ -35,6 +35,8 @@ import org.apache.flink.runtime.io.network.buffer.BufferBuilder;
 import org.apache.flink.runtime.io.network.buffer.BufferPool;
 import org.apache.flink.runtime.io.network.buffer.BufferProvider;
 import org.apache.flink.runtime.io.network.buffer.BufferRecycler;
+import org.apache.flink.runtime.io.network.buffer.FreeingBufferRecycler;
+import org.apache.flink.runtime.io.network.buffer.NetworkBuffer;
 import org.apache.flink.runtime.io.network.buffer.NetworkBufferPool;
 import org.apache.flink.runtime.io.network.partition.ResultPartitionID;
 import org.apache.flink.runtime.io.network.partition.consumer.BufferOrEvent;
@@ -78,9 +80,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * Tests for the {@link RecordWriter}.
- */
 @PrepareForTest({EventSerializer.class})
 @RunWith(PowerMockRunner.class)
 public class RecordWriterTest {
@@ -312,7 +311,7 @@ public class RecordWriterTest {
 		ResultPartitionWriter partitionWriter =
 			spy(new RecyclingPartitionWriter(new TestPooledBufferProvider(1, 16)));
 
-		RecordWriter<IntValue> recordWriter = new RecordWriter<>(partitionWriter);
+		RecordWriter<IntValue> recordWriter = new RecordWriter<IntValue>(partitionWriter);
 
 		// Fill a buffer, but don't write it out.
 		recordWriter.emit(new IntValue(0));
@@ -344,7 +343,7 @@ public class RecordWriterTest {
 
 		ResultPartitionWriter partitionWriter = new CollectingPartitionWriter(queues, bufferProvider);
 		RecordWriter<ByteArrayIO> writer = new RecordWriter<>(partitionWriter, new RoundRobin<ByteArrayIO>());
-		CheckpointBarrier barrier = new CheckpointBarrier(Integer.MAX_VALUE + 919192L, Integer.MAX_VALUE + 18828228L, CheckpointOptions.forCheckpointWithDefaultLocation());
+		CheckpointBarrier barrier = new CheckpointBarrier(Integer.MAX_VALUE + 919192L, Integer.MAX_VALUE + 18828228L, CheckpointOptions.forCheckpoint());
 
 		// No records emitted yet, broadcast should not request a buffer
 		writer.broadcastEvent(barrier);
@@ -381,7 +380,7 @@ public class RecordWriterTest {
 
 		ResultPartitionWriter partitionWriter = new CollectingPartitionWriter(queues, bufferProvider);
 		RecordWriter<ByteArrayIO> writer = new RecordWriter<>(partitionWriter, new RoundRobin<ByteArrayIO>());
-		CheckpointBarrier barrier = new CheckpointBarrier(Integer.MAX_VALUE + 1292L, Integer.MAX_VALUE + 199L, CheckpointOptions.forCheckpointWithDefaultLocation());
+		CheckpointBarrier barrier = new CheckpointBarrier(Integer.MAX_VALUE + 1292L, Integer.MAX_VALUE + 199L, CheckpointOptions.forCheckpoint());
 
 		// Emit records on some channels first (requesting buffers), then
 		// broadcast the event. The record buffers should be emitted first, then
@@ -433,6 +432,8 @@ public class RecordWriterTest {
 	/**
 	 * Tests that event buffers are properly recycled when broadcasting events
 	 * to multiple channels.
+	 *
+	 * @throws Exception
 	 */
 	@Test
 	public void testBroadcastEventBufferReferenceCounting() throws Exception {
@@ -492,7 +493,6 @@ public class RecordWriterTest {
 		buffer1.setReaderIndex(1);
 		assertEquals("Buffer 2 shares the same reader index as buffer 1", 0, buffer2.getReaderIndex());
 	}
-
 	/**
 	 * Tests that broadcasted records' buffers are independent (in their (reader) indices) once they
 	 * are put into the queue for Netty when broadcasting events to multiple channels.
@@ -526,6 +526,36 @@ public class RecordWriterTest {
 	// ---------------------------------------------------------------------------------------------
 	// Helpers
 	// ---------------------------------------------------------------------------------------------
+
+	private BufferProvider createBufferProvider(final int bufferSize)
+			throws IOException, InterruptedException {
+
+		BufferProvider bufferProvider = mock(BufferProvider.class);
+		when(bufferProvider.requestBufferBlocking()).thenAnswer(
+				new Answer<Buffer>() {
+					@Override
+					public Buffer answer(InvocationOnMock invocationOnMock) throws Throwable {
+						MemorySegment segment = MemorySegmentFactory.allocateUnpooledSegment(bufferSize);
+						Buffer buffer = new NetworkBuffer(segment, FreeingBufferRecycler.INSTANCE);
+						return buffer;
+					}
+				}
+		);
+
+		return bufferProvider;
+	}
+
+	private BufferProvider createBufferProvider(Buffer... buffers)
+			throws IOException, InterruptedException {
+
+		BufferProvider bufferProvider = mock(BufferProvider.class);
+
+		for (int i = 0; i < buffers.length; i++) {
+			when(bufferProvider.requestBufferBlocking()).thenReturn(buffers[i]);
+		}
+
+		return bufferProvider;
+	}
 
 	/**
 	 * Partition writer that collects the added buffers/events in multiple queue.
