@@ -19,11 +19,11 @@
 package org.apache.flink.runtime.io.network.api.serialization;
 
 import org.apache.flink.core.io.IOReadableWritable;
-import org.apache.flink.core.memory.DataInputDeserializer;
 import org.apache.flink.core.memory.DataInputView;
-import org.apache.flink.core.memory.DataOutputSerializer;
 import org.apache.flink.core.memory.MemorySegment;
 import org.apache.flink.runtime.io.network.buffer.Buffer;
+import org.apache.flink.core.memory.DataInputDeserializer;
+import org.apache.flink.core.memory.DataOutputSerializer;
 
 import java.io.EOFException;
 import java.io.IOException;
@@ -31,6 +31,9 @@ import java.io.UTFDataFormatException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
+/**
+ * @param <T> The type of the record to be deserialized.
+ */
 /**
  * @param <T> The type of the record to be deserialized.
  */
@@ -261,7 +264,7 @@ public class AdaptiveSpanningRecordDeserializer<T extends IOReadableWritable> im
 					}
 				}
 			}
-			catch (EOFException ignored) {}
+			catch (EOFException eofex) {}
 
 			if (bld.length() == 0) {
 				return null;
@@ -297,7 +300,7 @@ public class AdaptiveSpanningRecordDeserializer<T extends IOReadableWritable> im
 
 			int c, char2, char3;
 			int count = 0;
-			int chararrCount = 0;
+			int chararr_count = 0;
 
 			readFully(bytearr, 0, utflen);
 
@@ -307,7 +310,7 @@ public class AdaptiveSpanningRecordDeserializer<T extends IOReadableWritable> im
 					break;
 				}
 				count++;
-				chararr[chararrCount++] = (char) c;
+				chararr[chararr_count++] = (char) c;
 			}
 
 			while (count < utflen) {
@@ -322,7 +325,7 @@ public class AdaptiveSpanningRecordDeserializer<T extends IOReadableWritable> im
 					case 6:
 					case 7:
 						count++;
-						chararr[chararrCount++] = (char) c;
+						chararr[chararr_count++] = (char) c;
 						break;
 					case 12:
 					case 13:
@@ -334,7 +337,7 @@ public class AdaptiveSpanningRecordDeserializer<T extends IOReadableWritable> im
 						if ((char2 & 0xC0) != 0x80) {
 							throw new UTFDataFormatException("malformed input around byte " + count);
 						}
-						chararr[chararrCount++] = (char) (((c & 0x1F) << 6) | (char2 & 0x3F));
+						chararr[chararr_count++] = (char) (((c & 0x1F) << 6) | (char2 & 0x3F));
 						break;
 					case 14:
 						count += 3;
@@ -346,14 +349,14 @@ public class AdaptiveSpanningRecordDeserializer<T extends IOReadableWritable> im
 						if (((char2 & 0xC0) != 0x80) || ((char3 & 0xC0) != 0x80)) {
 							throw new UTFDataFormatException("malformed input around byte " + (count - 1));
 						}
-						chararr[chararrCount++] = (char) (((c & 0x0F) << 12) | ((char2 & 0x3F) << 6) | ((char3 & 0x3F)));
+						chararr[chararr_count++] = (char) (((c & 0x0F) << 12) | ((char2 & 0x3F) << 6) | ((char3 & 0x3F) << 0));
 						break;
 					default:
 						throw new UTFDataFormatException("malformed input around byte " + count);
 				}
 			}
 			// The number of chars produced may be less than utflen
-			return new String(chararr, 0, chararrCount);
+			return new String(chararr, 0, chararr_count);
 		}
 
 		@Override
@@ -371,27 +374,27 @@ public class AdaptiveSpanningRecordDeserializer<T extends IOReadableWritable> im
 		public void skipBytesToRead(int numBytes) throws IOException {
 			int skippedBytes = skipBytes(numBytes);
 
-			if (skippedBytes < numBytes){
+			if(skippedBytes < numBytes){
 				throw new EOFException("Could not skip " + numBytes + " bytes.");
 			}
 		}
 
 		@Override
 		public int read(byte[] b, int off, int len) throws IOException {
-			if (b == null){
+			if(b == null){
 				throw new NullPointerException("Byte array b cannot be null.");
 			}
 
-			if (off < 0){
+			if(off < 0){
 				throw new IllegalArgumentException("The offset off cannot be negative.");
 			}
 
-			if (len < 0){
+			if(len < 0){
 				throw new IllegalArgumentException("The length len cannot be negative.");
 			}
 
 			int toRead = Math.min(len, remaining());
-			this.segment.get(this.position, b, off, toRead);
+			this.segment.get(this.position,b,off, toRead);
 			this.position += toRead;
 
 			return toRead;

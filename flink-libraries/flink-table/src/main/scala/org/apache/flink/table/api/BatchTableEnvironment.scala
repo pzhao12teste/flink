@@ -86,20 +86,17 @@ abstract class BatchTableEnvironment(
   }
 
   /** Returns a unique table name according to the internal naming pattern. */
-  override protected def createUniqueTableName(): String =
-    "_DataSetTable_" + nameCntr.getAndIncrement()
+  protected def createUniqueTableName(): String = "_DataSetTable_" + nameCntr.getAndIncrement()
 
   /**
-    * Registers an internal [[BatchTableSource]] in this [[TableEnvironment]]'s catalog without
-    * name checking. Registered tables can be referenced in SQL queries.
+    * Registers an external [[BatchTableSource]] in this [[TableEnvironment]]'s catalog.
+    * Registered tables can be referenced in SQL queries.
     *
     * @param name        The name under which the [[TableSource]] is registered.
     * @param tableSource The [[TableSource]] to register.
     */
-  override protected def registerTableSourceInternal(
-      name: String,
-      tableSource: TableSource[_])
-    : Unit = {
+  override def registerTableSource(name: String, tableSource: TableSource[_]): Unit = {
+    checkValidTableName(name)
 
     tableSource match {
       case batchTableSource: BatchTableSource[_] =>
@@ -109,17 +106,6 @@ abstract class BatchTableEnvironment(
             "BatchTableEnvironment")
     }
   }
-
-// TODO expose this once we have enough table source factories that can deal with it
-//  /**
-//    * Creates a table from a descriptor that describes the source connector, source encoding,
-//    * the resulting table schema, and other properties.
-//    *
-//    * @param connectorDescriptor connector descriptor describing the source of the table
-//    */
-//  def from(connectorDescriptor: ConnectorDescriptor): BatchTableSourceDescriptor = {
-//    new BatchTableSourceDescriptor(this, connectorDescriptor)
-//  }
 
   /**
     * Registers an external [[TableSink]] with given field names and types in this

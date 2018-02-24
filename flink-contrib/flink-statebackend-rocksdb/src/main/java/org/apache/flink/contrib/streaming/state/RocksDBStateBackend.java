@@ -29,12 +29,13 @@ import org.apache.flink.runtime.query.TaskKvStateRegistry;
 import org.apache.flink.runtime.state.AbstractKeyedStateBackend;
 import org.apache.flink.runtime.state.AbstractStateBackend;
 import org.apache.flink.runtime.state.CheckpointStorage;
-import org.apache.flink.runtime.state.CompletedCheckpointStorageLocation;
+import org.apache.flink.runtime.state.CheckpointStreamFactory;
 import org.apache.flink.runtime.state.ConfigurableStateBackend;
 import org.apache.flink.runtime.state.DefaultOperatorStateBackend;
 import org.apache.flink.runtime.state.KeyGroupRange;
 import org.apache.flink.runtime.state.OperatorStateBackend;
 import org.apache.flink.runtime.state.StateBackend;
+import org.apache.flink.runtime.state.StreamStateHandle;
 import org.apache.flink.runtime.state.filesystem.FsStateBackend;
 import org.apache.flink.util.AbstractID;
 
@@ -196,11 +197,11 @@ public class RocksDBStateBackend extends AbstractStateBackend implements Configu
 	 * here where the snapshots from RocksDB would be stored.
 	 *
 	 * <p>The snapshots of the RocksDB state will be stored using the given backend's
-	 * {@link StateBackend#createCheckpointStorage(JobID)}.
+	 * {@link AbstractStateBackend#createStreamFactory(JobID, String) checkpoint stream}.
 	 *
 	 * @param checkpointStreamBackend The backend write the checkpoint streams to.
 	 */
-	public RocksDBStateBackend(StateBackend checkpointStreamBackend) {
+	public RocksDBStateBackend(AbstractStateBackend checkpointStreamBackend) {
 		this.checkpointStreamBackend = checkNotNull(checkpointStreamBackend);
 	}
 
@@ -210,28 +211,11 @@ public class RocksDBStateBackend extends AbstractStateBackend implements Configu
 	 * here where the snapshots from RocksDB would be stored.
 	 *
 	 * <p>The snapshots of the RocksDB state will be stored using the given backend's
-	 * {@link StateBackend#createCheckpointStorage(JobID)}.
+	 * {@link AbstractStateBackend#createStreamFactory(JobID, String) checkpoint stream}.
 	 *
 	 * @param checkpointStreamBackend The backend write the checkpoint streams to.
 	 * @param enableIncrementalCheckpointing True if incremental checkpointing is enabled.
 	 */
-	public RocksDBStateBackend(StateBackend checkpointStreamBackend, boolean enableIncrementalCheckpointing) {
-		this.checkpointStreamBackend = checkNotNull(checkpointStreamBackend);
-		this.enableIncrementalCheckpointing = enableIncrementalCheckpointing;
-	}
-
-	/**
-	 * @deprecated Use {@link #RocksDBStateBackend(StateBackend)} instead.
-	 */
-	@Deprecated
-	public RocksDBStateBackend(AbstractStateBackend checkpointStreamBackend) {
-		this.checkpointStreamBackend = checkNotNull(checkpointStreamBackend);
-	}
-
-	/**
-	 * @deprecated Use {@link #RocksDBStateBackend(StateBackend, boolean)} instead.
-	 */
-	@Deprecated
 	public RocksDBStateBackend(AbstractStateBackend checkpointStreamBackend, boolean enableIncrementalCheckpointing) {
 		this.checkpointStreamBackend = checkNotNull(checkpointStreamBackend);
 		this.enableIncrementalCheckpointing = enableIncrementalCheckpointing;
@@ -374,13 +358,27 @@ public class RocksDBStateBackend extends AbstractStateBackend implements Configu
 	// ------------------------------------------------------------------------
 
 	@Override
-	public CompletedCheckpointStorageLocation resolveCheckpoint(String pointer) throws IOException {
+	public StreamStateHandle resolveCheckpoint(String pointer) throws IOException {
 		return checkpointStreamBackend.resolveCheckpoint(pointer);
 	}
 
 	@Override
 	public CheckpointStorage createCheckpointStorage(JobID jobId) throws IOException {
 		return checkpointStreamBackend.createCheckpointStorage(jobId);
+	}
+
+	@Override
+	public CheckpointStreamFactory createStreamFactory(JobID jobId, String operatorIdentifier) throws IOException {
+		return checkpointStreamBackend.createStreamFactory(jobId, operatorIdentifier);
+	}
+
+	@Override
+	public CheckpointStreamFactory createSavepointStreamFactory(
+			JobID jobId,
+			String operatorIdentifier,
+			String targetLocation) throws IOException {
+
+		return checkpointStreamBackend.createSavepointStreamFactory(jobId, operatorIdentifier, targetLocation);
 	}
 
 	// ------------------------------------------------------------------------

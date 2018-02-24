@@ -17,17 +17,14 @@
 
 package org.apache.flink.streaming.connectors.kinesis.internals;
 
-import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.streaming.connectors.kinesis.metrics.ShardMetricsReporter;
 import org.apache.flink.streaming.connectors.kinesis.model.KinesisStreamShardState;
 import org.apache.flink.streaming.connectors.kinesis.model.SentinelSequenceNumber;
 import org.apache.flink.streaming.connectors.kinesis.model.SequenceNumber;
 import org.apache.flink.streaming.connectors.kinesis.model.StreamShardHandle;
 import org.apache.flink.streaming.connectors.kinesis.proxy.KinesisProxyInterface;
-import org.apache.flink.streaming.connectors.kinesis.serialization.KinesisDeserializationSchemaWrapper;
 import org.apache.flink.streaming.connectors.kinesis.testutils.FakeKinesisBehavioursFactory;
 import org.apache.flink.streaming.connectors.kinesis.testutils.KinesisShardIdGenerator;
-import org.apache.flink.streaming.connectors.kinesis.testutils.TestSourceContext;
 import org.apache.flink.streaming.connectors.kinesis.testutils.TestableKinesisDataFetcher;
 
 import com.amazonaws.services.kinesis.model.HashKeyRange;
@@ -43,6 +40,7 @@ import java.util.Properties;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Tests for the {@link ShardConsumer}.
@@ -60,17 +58,13 @@ public class ShardConsumerTest {
 				fakeToBeConsumedShard,
 				new SequenceNumber("fakeStartingState")));
 
-		TestSourceContext<String> sourceContext = new TestSourceContext<>();
-
-		TestableKinesisDataFetcher<String> fetcher =
-			new TestableKinesisDataFetcher<>(
+		TestableKinesisDataFetcher fetcher =
+			new TestableKinesisDataFetcher(
 				Collections.singletonList("fakeStream"),
-				sourceContext,
 				new Properties(),
-				new KinesisDeserializationSchemaWrapper<>(new SimpleStringSchema()),
 				10,
 				2,
-				new AtomicReference<>(),
+				new AtomicReference<Throwable>(),
 				subscribedShardsStateUnderTest,
 				KinesisDataFetcher.createInitialSubscribedStreamsToLastDiscoveredShardsState(Collections.singletonList("fakeStream")),
 				Mockito.mock(KinesisProxyInterface.class));
@@ -98,17 +92,13 @@ public class ShardConsumerTest {
 			new KinesisStreamShardState(KinesisDataFetcher.convertToStreamShardMetadata(fakeToBeConsumedShard),
 				fakeToBeConsumedShard, new SequenceNumber("fakeStartingState")));
 
-		TestSourceContext<String> sourceContext = new TestSourceContext<>();
-
-		TestableKinesisDataFetcher<String> fetcher =
-			new TestableKinesisDataFetcher<>(
+		TestableKinesisDataFetcher fetcher =
+			new TestableKinesisDataFetcher(
 				Collections.singletonList("fakeStream"),
-				sourceContext,
 				new Properties(),
-				new KinesisDeserializationSchemaWrapper<>(new SimpleStringSchema()),
 				10,
 				2,
-				new AtomicReference<>(),
+				new AtomicReference<Throwable>(),
 				subscribedShardsStateUnderTest,
 				KinesisDataFetcher.createInitialSubscribedStreamsToLastDiscoveredShardsState(Collections.singletonList("fakeStream")),
 				Mockito.mock(KinesisProxyInterface.class));
@@ -121,10 +111,9 @@ public class ShardConsumerTest {
 			FakeKinesisBehavioursFactory.totalNumOfRecordsAfterNumOfGetRecordsCalls(1000, 9, 500L),
 			new ShardMetricsReporter()).run();
 
-		assertEquals(1000, sourceContext.getCollectedOutputs().size());
-		assertEquals(
-			SentinelSequenceNumber.SENTINEL_SHARD_ENDING_SEQUENCE_NUM.get(),
-			subscribedShardsStateUnderTest.get(0).getLastProcessedSequenceNum());
+		assertTrue(fetcher.getNumOfElementsCollected() == 1000);
+		assertTrue(subscribedShardsStateUnderTest.get(0).getLastProcessedSequenceNum().equals(
+			SentinelSequenceNumber.SENTINEL_SHARD_ENDING_SEQUENCE_NUM.get()));
 	}
 
 	@Test
@@ -136,17 +125,13 @@ public class ShardConsumerTest {
 			new KinesisStreamShardState(KinesisDataFetcher.convertToStreamShardMetadata(fakeToBeConsumedShard),
 				fakeToBeConsumedShard, new SequenceNumber("fakeStartingState")));
 
-		TestSourceContext<String> sourceContext = new TestSourceContext<>();
-
-		TestableKinesisDataFetcher<String> fetcher =
-			new TestableKinesisDataFetcher<>(
+		TestableKinesisDataFetcher fetcher =
+			new TestableKinesisDataFetcher(
 				Collections.singletonList("fakeStream"),
-				sourceContext,
 				new Properties(),
-				new KinesisDeserializationSchemaWrapper<>(new SimpleStringSchema()),
 				10,
 				2,
-				new AtomicReference<>(),
+				new AtomicReference<Throwable>(),
 				subscribedShardsStateUnderTest,
 				KinesisDataFetcher.createInitialSubscribedStreamsToLastDiscoveredShardsState(Collections.singletonList("fakeStream")),
 				Mockito.mock(KinesisProxyInterface.class));
@@ -162,10 +147,9 @@ public class ShardConsumerTest {
 				1000, 9, 7, 500L),
 			new ShardMetricsReporter()).run();
 
-		assertEquals(1000, sourceContext.getCollectedOutputs().size());
-		assertEquals(
-			SentinelSequenceNumber.SENTINEL_SHARD_ENDING_SEQUENCE_NUM.get(),
-			subscribedShardsStateUnderTest.get(0).getLastProcessedSequenceNum());
+		assertTrue(fetcher.getNumOfElementsCollected() == 1000);
+		assertTrue(subscribedShardsStateUnderTest.get(0).getLastProcessedSequenceNum().equals(
+			SentinelSequenceNumber.SENTINEL_SHARD_ENDING_SEQUENCE_NUM.get()));
 	}
 
 	private static StreamShardHandle getMockStreamShard(String streamName, int shardId) {

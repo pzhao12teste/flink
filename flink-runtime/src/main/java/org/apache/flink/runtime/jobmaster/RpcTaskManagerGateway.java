@@ -32,7 +32,6 @@ import org.apache.flink.runtime.jobmanager.slots.TaskManagerGateway;
 import org.apache.flink.runtime.messages.Acknowledge;
 import org.apache.flink.runtime.messages.StackTrace;
 import org.apache.flink.runtime.messages.StackTraceSampleResponse;
-import org.apache.flink.runtime.taskexecutor.FileType;
 import org.apache.flink.runtime.taskexecutor.TaskExecutorGateway;
 import org.apache.flink.util.Preconditions;
 
@@ -84,13 +83,7 @@ public class RpcTaskManagerGateway implements TaskManagerGateway {
 			int maxStackTraceDepth,
 			Time timeout) {
 
-		return taskExecutorGateway.requestStackTraceSample(
-			executionAttemptID,
-			sampleId,
-			numSamples,
-			delayBetweenSamples,
-			maxStackTraceDepth,
-			timeout);
+		throw new UnsupportedOperationException("Operation is not yet supported.");
 	}
 
 	@Override
@@ -134,12 +127,14 @@ public class RpcTaskManagerGateway implements TaskManagerGateway {
 
 	@Override
 	public CompletableFuture<TransientBlobKey> requestTaskManagerLog(Time timeout) {
-		return taskExecutorGateway.requestFileUpload(FileType.LOG, timeout);
+//		return taskExecutorGateway.requestTaskManagerLog(timeout);
+		throw new UnsupportedOperationException("Operation is not yet supported.");
 	}
 
 	@Override
 	public CompletableFuture<TransientBlobKey> requestTaskManagerStdout(Time timeout) {
-		return taskExecutorGateway.requestFileUpload(FileType.STDOUT, timeout);
+//		return taskExecutorGateway.requestTaskManagerStdout(timeout);
+		throw new UnsupportedOperationException("Operation is not yet supported.");
 	}
 
 	@Override

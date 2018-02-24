@@ -21,7 +21,6 @@ package org.apache.flink.runtime.jobmaster;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.configuration.Configuration;
-import org.apache.flink.runtime.blob.BlobServer;
 import org.apache.flink.runtime.client.JobExecutionException;
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import org.apache.flink.runtime.execution.librarycache.BlobLibraryCacheManager;
@@ -114,7 +113,6 @@ public class JobManagerRunner implements LeaderContender, OnCompletionActions, F
 			final RpcService rpcService,
 			final HighAvailabilityServices haServices,
 			final HeartbeatServices heartbeatServices,
-			final BlobServer blobServer,
 			final JobManagerServices jobManagerServices,
 			final MetricRegistry metricRegistry,
 			final OnCompletionActions toNotifyOnComplete,
@@ -163,7 +161,8 @@ public class JobManagerRunner implements LeaderContender, OnCompletionActions, F
 				haServices,
 				heartbeatServices,
 				jobManagerServices.executorService,
-				blobServer,
+				jobManagerServices.blobServer,
+				jobManagerServices.libraryCacheManager,
 				jobManagerServices.restartStrategyFactory,
 				jobManagerServices.rpcAskTimeout,
 				jobManagerMetrics,
@@ -171,8 +170,7 @@ public class JobManagerRunner implements LeaderContender, OnCompletionActions, F
 				this,
 				userCodeLoader,
 				restAddress,
-				metricRegistry.getMetricQueryServicePath(),
-				jobManagerServices.backPressureStatsTracker);
+				metricRegistry.getMetricQueryServicePath());
 
 			this.timeout = jobManagerServices.rpcAskTimeout;
 		}

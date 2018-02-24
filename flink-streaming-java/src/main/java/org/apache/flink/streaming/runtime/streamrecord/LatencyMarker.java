@@ -19,7 +19,6 @@
 package org.apache.flink.streaming.runtime.streamrecord;
 
 import org.apache.flink.annotation.PublicEvolving;
-import org.apache.flink.runtime.jobgraph.OperatorID;
 
 /**
  * Special record type carrying a timestamp of its creation time at a source operator
@@ -36,16 +35,16 @@ public final class LatencyMarker extends StreamElement {
 	/** The time the latency mark is denoting. */
 	private final long markedTime;
 
-	private final OperatorID operatorId;
+	private final int vertexID;
 
 	private final int subtaskIndex;
 
 	/**
 	 * Creates a latency mark with the given timestamp.
 	 */
-	public LatencyMarker(long markedTime, OperatorID operatorId, int subtaskIndex) {
+	public LatencyMarker(long markedTime, int vertexID, int subtaskIndex) {
 		this.markedTime = markedTime;
-		this.operatorId = operatorId;
+		this.vertexID = vertexID;
 		this.subtaskIndex = subtaskIndex;
 	}
 
@@ -56,8 +55,8 @@ public final class LatencyMarker extends StreamElement {
 		return markedTime;
 	}
 
-	public OperatorID getOperatorId() {
-		return operatorId;
+	public int getVertexID() {
+		return vertexID;
 	}
 
 	public int getSubtaskIndex() {
@@ -80,7 +79,7 @@ public final class LatencyMarker extends StreamElement {
 		if (markedTime != that.markedTime) {
 			return false;
 		}
-		if (operatorId != that.operatorId) {
+		if (vertexID != that.vertexID) {
 			return false;
 		}
 		return subtaskIndex == that.subtaskIndex;
@@ -90,7 +89,7 @@ public final class LatencyMarker extends StreamElement {
 	@Override
 	public int hashCode() {
 		int result = (int) (markedTime ^ (markedTime >>> 32));
-		result = 31 * result + operatorId.hashCode();
+		result = 31 * result + vertexID;
 		result = 31 * result + subtaskIndex;
 		return result;
 	}
@@ -99,7 +98,7 @@ public final class LatencyMarker extends StreamElement {
 	public String toString() {
 		return "LatencyMarker{" +
 				"markedTime=" + markedTime +
-				", operatorId=" + operatorId +
+				", vertexID=" + vertexID +
 				", subtaskIndex=" + subtaskIndex +
 				'}';
 	}

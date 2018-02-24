@@ -19,10 +19,8 @@
 package org.apache.flink.runtime.taskexecutor;
 
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
-import org.apache.flink.runtime.entrypoint.ClusterInformation;
 import org.apache.flink.runtime.instance.InstanceID;
 import org.apache.flink.runtime.registration.RegistrationResponse;
-import org.apache.flink.util.Preconditions;
 
 import java.io.Serializable;
 
@@ -40,25 +38,17 @@ public final class TaskExecutorRegistrationSuccess extends RegistrationResponse.
 
 	private final long heartbeatInterval;
 
-	private final ClusterInformation clusterInformation;
-
 	/**
 	 * Create a new {@code TaskExecutorRegistrationSuccess} message.
 	 * 
-	 * @param registrationId The ID that the ResourceManager assigned the registration.
+	 * @param registrationId     The ID that the ResourceManager assigned the registration.
 	 * @param resourceManagerResourceId The unique ID that identifies the ResourceManager.
-	 * @param heartbeatInterval The interval in which the ResourceManager will heartbeat the TaskExecutor.
-	 * @param clusterInformation information about the cluster
+	 * @param heartbeatInterval  The interval in which the ResourceManager will heartbeat the TaskExecutor.
 	 */
-	public TaskExecutorRegistrationSuccess(
-			InstanceID registrationId,
-			ResourceID resourceManagerResourceId,
-			long heartbeatInterval,
-			ClusterInformation clusterInformation) {
-		this.registrationId = Preconditions.checkNotNull(registrationId);
-		this.resourceManagerResourceId = Preconditions.checkNotNull(resourceManagerResourceId);
+	public TaskExecutorRegistrationSuccess(InstanceID registrationId, ResourceID resourceManagerResourceId, long heartbeatInterval) {
+		this.registrationId = registrationId;
+		this.resourceManagerResourceId = resourceManagerResourceId;
 		this.heartbeatInterval = heartbeatInterval;
-		this.clusterInformation = Preconditions.checkNotNull(clusterInformation);
 	}
 
 	/**
@@ -80,13 +70,6 @@ public final class TaskExecutorRegistrationSuccess extends RegistrationResponse.
 	 */
 	public long getHeartbeatInterval() {
 		return heartbeatInterval;
-	}
-
-	/**
-	 * Gets the cluster information.
-	 */
-	public ClusterInformation getClusterInformation() {
-		return clusterInformation;
 	}
 
 	@Override

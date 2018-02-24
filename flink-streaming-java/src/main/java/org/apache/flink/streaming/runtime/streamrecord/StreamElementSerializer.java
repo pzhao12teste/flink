@@ -29,7 +29,6 @@ import org.apache.flink.api.common.typeutils.UnloadableDummyTypeSerializer;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.core.memory.DataInputView;
 import org.apache.flink.core.memory.DataOutputView;
-import org.apache.flink.runtime.jobgraph.OperatorID;
 import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.streamstatus.StreamStatus;
 
@@ -187,8 +186,7 @@ public final class StreamElementSerializer<T> extends TypeSerializer<StreamEleme
 		else if (value.isLatencyMarker()) {
 			target.write(TAG_LATENCY_MARKER);
 			target.writeLong(value.asLatencyMarker().getMarkedTime());
-			target.writeLong(value.asLatencyMarker().getOperatorId().getLowerPart());
-			target.writeLong(value.asLatencyMarker().getOperatorId().getUpperPart());
+			target.writeInt(value.asLatencyMarker().getVertexID());
 			target.writeInt(value.asLatencyMarker().getSubtaskIndex());
 		}
 		else {
@@ -213,7 +211,7 @@ public final class StreamElementSerializer<T> extends TypeSerializer<StreamEleme
 			return new StreamStatus(source.readInt());
 		}
 		else if (tag == TAG_LATENCY_MARKER) {
-			return new LatencyMarker(source.readLong(), new OperatorID(source.readLong(), source.readLong()), source.readInt());
+			return new LatencyMarker(source.readLong(), source.readInt(), source.readInt());
 		}
 		else {
 			throw new IOException("Corrupt stream, found tag: " + tag);
@@ -240,7 +238,7 @@ public final class StreamElementSerializer<T> extends TypeSerializer<StreamEleme
 			return new Watermark(source.readLong());
 		}
 		else if (tag == TAG_LATENCY_MARKER) {
-			return new LatencyMarker(source.readLong(), new OperatorID(source.readLong(), source.readLong()), source.readInt());
+			return new LatencyMarker(source.readLong(), source.readInt(), source.readInt());
 		}
 		else {
 			throw new IOException("Corrupt stream, found tag: " + tag);

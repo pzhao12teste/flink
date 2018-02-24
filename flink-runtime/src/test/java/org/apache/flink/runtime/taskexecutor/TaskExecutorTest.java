@@ -23,7 +23,8 @@ import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.runtime.blob.BlobCacheService;
-import org.apache.flink.runtime.blob.VoidBlobStore;
+import org.apache.flink.runtime.blob.PermanentBlobCache;
+import org.apache.flink.runtime.blob.TransientBlobCache;
 import org.apache.flink.runtime.broadcast.BroadcastVariableManager;
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
@@ -33,7 +34,6 @@ import org.apache.flink.runtime.concurrent.ScheduledExecutor;
 import org.apache.flink.runtime.deployment.InputGateDeploymentDescriptor;
 import org.apache.flink.runtime.deployment.ResultPartitionDeploymentDescriptor;
 import org.apache.flink.runtime.deployment.TaskDeploymentDescriptor;
-import org.apache.flink.runtime.entrypoint.ClusterInformation;
 import org.apache.flink.runtime.execution.Environment;
 import org.apache.flink.runtime.execution.librarycache.LibraryCacheManager;
 import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
@@ -109,7 +109,6 @@ import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 import org.slf4j.Logger;
 
-import java.io.IOException;
 import java.net.InetAddress;
 import java.util.Arrays;
 import java.util.Collection;
@@ -152,20 +151,14 @@ public class TaskExecutorTest extends TestLogger {
 
 	private TestingRpcService rpc;
 
-	private BlobCacheService dummyBlobCacheService;
-
 	@Before
-	public void setup() throws IOException {
+	public void setup() {
 		rpc = new TestingRpcService();
 		timerService = new TimerService<>(TestingUtils.defaultExecutor(), timeout.toMilliseconds());
-		dummyBlobCacheService = new BlobCacheService(
-			new Configuration(),
-			new VoidBlobStore(),
-			null);
 	}
 
 	@After
-	public void teardown() throws IOException {
+	public void teardown() {
 		if (rpc != null) {
 			rpc.stopService();
 			rpc = null;
@@ -174,11 +167,6 @@ public class TaskExecutorTest extends TestLogger {
 		if (timerService != null) {
 			timerService.stop();
 			timerService = null;
-		}
-
-		if (dummyBlobCacheService != null) {
-			dummyBlobCacheService.close();
-			dummyBlobCacheService = null;
 		}
 	}
 
@@ -233,12 +221,13 @@ public class TaskExecutorTest extends TestLogger {
 		final UUID jmLeaderId = UUID.randomUUID();
 		final ResourceID jmResourceId = new ResourceID(jobMasterAddress);
 		final JobMasterGateway jobMasterGateway = mock(JobMasterGateway.class);
+		final int blobPort = 42;
 
 		when(jobMasterGateway.registerTaskManager(
 				any(String.class),
 				eq(taskManagerLocation),
 				any(Time.class)
-		)).thenReturn(CompletableFuture.completedFuture(new JMTMRegistrationSuccess(jmResourceId)));
+		)).thenReturn(CompletableFuture.completedFuture(new JMTMRegistrationSuccess(jmResourceId, blobPort)));
 		when(jobMasterGateway.getAddress()).thenReturn(jobMasterAddress);
 		when(jobMasterGateway.getHostname()).thenReturn("localhost");
 
@@ -252,10 +241,10 @@ public class TaskExecutorTest extends TestLogger {
 			mock(NetworkEnvironment.class),
 			haServices,
 			heartbeatServices,
+
 			mock(TaskManagerMetricGroup.class),
 			mock(BroadcastVariableManager.class),
 			mock(FileCache.class),
-			dummyBlobCacheService,
 			taskSlotTable,
 			new JobManagerTable(),
 			jobLeaderService,
@@ -306,8 +295,7 @@ public class TaskExecutorTest extends TestLogger {
 					new TaskExecutorRegistrationSuccess(
 						new InstanceID(),
 						rmResourceId,
-						10L,
-						new ClusterInformation("localhost", 1234))));
+						10L)));
 
 		rpc.registerGateway(rmAddress, rmGateway);
 
@@ -360,10 +348,10 @@ public class TaskExecutorTest extends TestLogger {
 			mock(NetworkEnvironment.class),
 			haServices,
 			heartbeatServices,
+
 			mock(TaskManagerMetricGroup.class),
 			mock(BroadcastVariableManager.class),
 			mock(FileCache.class),
-			dummyBlobCacheService,
 			taskSlotTable,
 			mock(JobManagerTable.class),
 			mock(JobLeaderService.class),
@@ -412,8 +400,7 @@ public class TaskExecutorTest extends TestLogger {
 					new TaskExecutorRegistrationSuccess(
 						new InstanceID(),
 						rmResourceId,
-						10L,
-						new ClusterInformation("localhost", 1234))));
+						10L)));
 
 		rpc.registerGateway(rmAddress, rmGateway);
 
@@ -480,10 +467,10 @@ public class TaskExecutorTest extends TestLogger {
 			mock(NetworkEnvironment.class),
 			haServices,
 			heartbeatServices,
+
 			mock(TaskManagerMetricGroup.class),
 			mock(BroadcastVariableManager.class),
 			mock(FileCache.class),
-			dummyBlobCacheService,
 			taskSlotTable,
 			mock(JobManagerTable.class),
 			mock(JobLeaderService.class),
@@ -544,7 +531,7 @@ public class TaskExecutorTest extends TestLogger {
 		when(rmGateway.registerTaskExecutor(
 					anyString(), any(ResourceID.class), any(SlotReport.class), anyInt(), any(HardwareDescription.class), any(Time.class)))
 			.thenReturn(CompletableFuture.completedFuture(new TaskExecutorRegistrationSuccess(
-				new InstanceID(), resourceManagerResourceId, 10L, new ClusterInformation("localhost", 1234))));
+				new InstanceID(), resourceManagerResourceId, 10L)));
 
 		TaskManagerConfiguration taskManagerServicesConfiguration = mock(TaskManagerConfiguration.class);
 		when(taskManagerServicesConfiguration.getNumberSlots()).thenReturn(1);
@@ -576,10 +563,10 @@ public class TaskExecutorTest extends TestLogger {
 			mock(NetworkEnvironment.class),
 			haServices,
 			mock(HeartbeatServices.class, RETURNS_MOCKS),
+
 			mock(TaskManagerMetricGroup.class),
 			mock(BroadcastVariableManager.class),
 			mock(FileCache.class),
-			dummyBlobCacheService,
 			taskSlotTable,
 			mock(JobManagerTable.class),
 			mock(JobLeaderService.class),
@@ -619,11 +606,11 @@ public class TaskExecutorTest extends TestLogger {
 		when(rmGateway1.registerTaskExecutor(
 					anyString(), any(ResourceID.class), any(SlotReport.class), anyInt(), any(HardwareDescription.class), any(Time.class)))
 			.thenReturn(CompletableFuture.completedFuture(
-				new TaskExecutorRegistrationSuccess(new InstanceID(), rmResourceId1, 10L, new ClusterInformation("localhost", 1234))));
+				new TaskExecutorRegistrationSuccess(new InstanceID(), rmResourceId1, 10L)));
 		when(rmGateway2.registerTaskExecutor(
 					anyString(), any(ResourceID.class), any(SlotReport.class), anyInt(), any(HardwareDescription.class), any(Time.class)))
 			.thenReturn(CompletableFuture.completedFuture(
-				new TaskExecutorRegistrationSuccess(new InstanceID(), rmResourceId2, 10L, new ClusterInformation("localhost", 1234))));
+				new TaskExecutorRegistrationSuccess(new InstanceID(), rmResourceId2, 10L)));
 
 		rpc.registerGateway(address1, rmGateway1);
 		rpc.registerGateway(address2, rmGateway2);
@@ -660,10 +647,10 @@ public class TaskExecutorTest extends TestLogger {
 			mock(NetworkEnvironment.class),
 			haServices,
 			mock(HeartbeatServices.class, RETURNS_MOCKS),
+
 			mock(TaskManagerMetricGroup.class),
 			mock(BroadcastVariableManager.class),
 			mock(FileCache.class),
-			dummyBlobCacheService,
 			taskSlotTable,
 			mock(JobManagerTable.class),
 			mock(JobLeaderService.class),
@@ -753,12 +740,16 @@ public class TaskExecutorTest extends TestLogger {
 		final JobMasterGateway jobMasterGateway = mock(JobMasterGateway.class);
 		when(jobMasterGateway.getFencingToken()).thenReturn(jobMasterId);
 
+		BlobCacheService blobService =
+			new BlobCacheService(mock(PermanentBlobCache.class), mock(TransientBlobCache.class));
+
 		final JobManagerConnection jobManagerConnection = new JobManagerConnection(
 			jobId,
 			ResourceID.generate(),
 			jobMasterGateway,
 			mock(TaskManagerActions.class),
 			mock(CheckpointResponder.class),
+			blobService,
 			libraryCacheManager,
 			mock(ResultPartitionConsumableNotifier.class),
 			mock(PartitionProducerStateChecker.class));
@@ -801,10 +792,10 @@ public class TaskExecutorTest extends TestLogger {
 			networkEnvironment,
 			haServices,
 			mock(HeartbeatServices.class, RETURNS_MOCKS),
+
 			taskManagerMetricGroup,
 			mock(BroadcastVariableManager.class),
 			mock(FileCache.class),
-			dummyBlobCacheService,
 			taskSlotTable,
 			jobManagerTable,
 			mock(JobLeaderService.class),
@@ -887,18 +878,20 @@ public class TaskExecutorTest extends TestLogger {
 			any(SlotReport.class),
 			anyInt(),
 			any(HardwareDescription.class),
-			any(Time.class))).thenReturn(CompletableFuture.completedFuture(new TaskExecutorRegistrationSuccess(registrationId, resourceManagerResourceId, 1000L, new ClusterInformation("localhost", 1234))));
+			any(Time.class))).thenReturn(CompletableFuture.completedFuture(new TaskExecutorRegistrationSuccess(registrationId, resourceManagerResourceId, 1000L)));
 
 		final String jobManagerAddress = "jm";
 		final UUID jobManagerLeaderId = UUID.randomUUID();
 		final ResourceID jmResourceId = new ResourceID(jobManagerAddress);
+		final int blobPort = 42;
+
 		final JobMasterGateway jobMasterGateway = mock(JobMasterGateway.class);
 
 		when(jobMasterGateway.registerTaskManager(
 				any(String.class),
 				eq(taskManagerLocation),
 				any(Time.class)
-		)).thenReturn(CompletableFuture.completedFuture(new JMTMRegistrationSuccess(jmResourceId)));
+		)).thenReturn(CompletableFuture.completedFuture(new JMTMRegistrationSuccess(jmResourceId, blobPort)));
 		when(jobMasterGateway.getHostname()).thenReturn(jobManagerAddress);
 		when(jobMasterGateway.offerSlots(
 			any(ResourceID.class),
@@ -922,10 +915,10 @@ public class TaskExecutorTest extends TestLogger {
 			mock(NetworkEnvironment.class),
 			haServices,
 			mock(HeartbeatServices.class, RETURNS_MOCKS),
+
 			mock(TaskManagerMetricGroup.class),
 			mock(BroadcastVariableManager.class),
 			mock(FileCache.class),
-			dummyBlobCacheService,
 			taskSlotTable,
 			jobManagerTable,
 			jobLeaderService,
@@ -1007,9 +1000,10 @@ public class TaskExecutorTest extends TestLogger {
 			any(SlotReport.class),
 			anyInt(),
 			any(HardwareDescription.class),
-			any(Time.class))).thenReturn(CompletableFuture.completedFuture(new TaskExecutorRegistrationSuccess(registrationId, resourceManagerResourceId, 1000L, new ClusterInformation("localhost", 1234))));
+			any(Time.class))).thenReturn(CompletableFuture.completedFuture(new TaskExecutorRegistrationSuccess(registrationId, resourceManagerResourceId, 1000L)));
 
 		final ResourceID jmResourceId = new ResourceID(jobManagerAddress);
+		final int blobPort = 42;
 
 		final AllocationID allocationId1 = new AllocationID();
 		final AllocationID allocationId2 = new AllocationID();
@@ -1022,7 +1016,7 @@ public class TaskExecutorTest extends TestLogger {
 				any(String.class),
 				eq(taskManagerLocation),
 				any(Time.class)
-		)).thenReturn(CompletableFuture.completedFuture(new JMTMRegistrationSuccess(jmResourceId)));
+		)).thenReturn(CompletableFuture.completedFuture(new JMTMRegistrationSuccess(jmResourceId, blobPort)));
 		when(jobMasterGateway.getHostname()).thenReturn(jobManagerAddress);
 
 		when(jobMasterGateway.offerSlots(
@@ -1045,7 +1039,6 @@ public class TaskExecutorTest extends TestLogger {
 			mock(TaskManagerMetricGroup.class),
 			mock(BroadcastVariableManager.class),
 			mock(FileCache.class),
-			dummyBlobCacheService,
 			taskSlotTable,
 			jobManagerTable,
 			jobLeaderService,
@@ -1126,7 +1119,7 @@ public class TaskExecutorTest extends TestLogger {
 		when(taskSlotTable.getCurrentAllocation(1)).thenReturn(new AllocationID());
 
 			when(rmGateway1.registerTaskExecutor(anyString(), eq(resourceID), any(SlotReport.class), anyInt(), any(HardwareDescription.class), any(Time.class))).thenReturn(
-			CompletableFuture.completedFuture(new TaskExecutorRegistrationSuccess(new InstanceID(), ResourceID.generate(), 1000L, new ClusterInformation("localhost", 1234))));
+			CompletableFuture.completedFuture(new TaskExecutorRegistrationSuccess(new InstanceID(), ResourceID.generate(), 1000L)));
 
 		TaskExecutor taskManager = new TaskExecutor(
 			rpc,
@@ -1138,10 +1131,10 @@ public class TaskExecutorTest extends TestLogger {
 			mock(NetworkEnvironment.class),
 			haServices,
 			mock(HeartbeatServices.class, RETURNS_MOCKS),
+
 			mock(TaskManagerMetricGroup.class),
 			mock(BroadcastVariableManager.class),
 			mock(FileCache.class),
-			dummyBlobCacheService,
 			taskSlotTable,
 			mock(JobManagerTable.class),
 			mock(JobLeaderService.class),
@@ -1253,9 +1246,10 @@ public class TaskExecutorTest extends TestLogger {
 			anyInt(),
 			any(HardwareDescription.class),
 			any(Time.class))).thenReturn(
-				CompletableFuture.completedFuture(new TaskExecutorRegistrationSuccess(registrationId, resourceManagerResourceId, 1000L, new ClusterInformation("localhost", 1234))));
+				CompletableFuture.completedFuture(new TaskExecutorRegistrationSuccess(registrationId, resourceManagerResourceId, 1000L)));
 
 		final ResourceID jmResourceId = new ResourceID(jobManagerAddress);
+		final int blobPort = 42;
 
 		final AllocationID allocationId1 = new AllocationID();
 		final AllocationID allocationId2 = new AllocationID();
@@ -1268,7 +1262,7 @@ public class TaskExecutorTest extends TestLogger {
 			any(String.class),
 			eq(taskManagerLocation),
 			any(Time.class)
-		)).thenReturn(CompletableFuture.completedFuture(new JMTMRegistrationSuccess(jmResourceId)));
+		)).thenReturn(CompletableFuture.completedFuture(new JMTMRegistrationSuccess(jmResourceId, blobPort)));
 		when(jobMasterGateway.getHostname()).thenReturn(jobManagerAddress);
 		when(jobMasterGateway.updateTaskExecutionState(any(TaskExecutionState.class))).thenReturn(CompletableFuture.completedFuture(Acknowledge.get()));
 
@@ -1279,12 +1273,16 @@ public class TaskExecutorTest extends TestLogger {
 		final LibraryCacheManager libraryCacheManager = mock(LibraryCacheManager.class);
 		when(libraryCacheManager.getClassLoader(eq(jobId))).thenReturn(getClass().getClassLoader());
 
+		BlobCacheService blobService =
+			new BlobCacheService(mock(PermanentBlobCache.class), mock(TransientBlobCache.class));
+
 		final JobManagerConnection jobManagerConnection = new JobManagerConnection(
 			jobId,
 			jmResourceId,
 			jobMasterGateway,
 			mock(TaskManagerActions.class),
 			mock(CheckpointResponder.class),
+			blobService,
 			libraryCacheManager,
 			mock(ResultPartitionConsumableNotifier.class),
 			mock(PartitionProducerStateChecker.class));
@@ -1310,10 +1308,10 @@ public class TaskExecutorTest extends TestLogger {
 			networkMock,
 			haServices,
 			mock(HeartbeatServices.class, RETURNS_MOCKS),
+
 			taskManagerMetricGroup,
 			mock(BroadcastVariableManager.class),
 			mock(FileCache.class),
-			dummyBlobCacheService,
 			taskSlotTable,
 			jobManagerTable,
 			jobLeaderService,
@@ -1421,7 +1419,7 @@ public class TaskExecutorTest extends TestLogger {
 		final JobID jobId = new JobID();
 		final JobMasterGateway jobMasterGateway = mock(JobMasterGateway.class);
 		when(jobMasterGateway.getHostname()).thenReturn("localhost");
-		final JMTMRegistrationSuccess registrationMessage = new JMTMRegistrationSuccess(ResourceID.generate());
+		final JMTMRegistrationSuccess registrationMessage = new JMTMRegistrationSuccess(ResourceID.generate(), 1);
 		final JobManagerTable jobManagerTableMock = spy(new JobManagerTable());
 
 		final TaskExecutor taskExecutor = new TaskExecutor(
@@ -1437,7 +1435,6 @@ public class TaskExecutorTest extends TestLogger {
 			mock(TaskManagerMetricGroup.class),
 			mock(BroadcastVariableManager.class),
 			mock(FileCache.class),
-			dummyBlobCacheService,
 			mock(TaskSlotTable.class),
 			jobManagerTableMock,
 			jobLeaderService,
@@ -1517,7 +1514,6 @@ public class TaskExecutorTest extends TestLogger {
 			mock(TaskManagerMetricGroup.class),
 			mock(BroadcastVariableManager.class),
 			mock(FileCache.class),
-			dummyBlobCacheService,
 			taskSlotTable,
 			mock(JobManagerTable.class),
 			mock(JobLeaderService.class),
@@ -1583,7 +1579,6 @@ public class TaskExecutorTest extends TestLogger {
 			UnregisteredMetricGroups.createUnregisteredTaskManagerMetricGroup(),
 			new BroadcastVariableManager(),
 			mock(FileCache.class),
-			dummyBlobCacheService,
 			taskSlotTable,
 			new JobManagerTable(),
 			jobLeaderService,

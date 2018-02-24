@@ -25,6 +25,7 @@ import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
 import org.apache.flink.api.common.typeutils.base.StringSerializer;
 import org.apache.flink.api.common.typeutils.base.VoidSerializer;
 import org.apache.flink.api.java.functions.KeySelector;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.testutils.OneShotLatch;
 import org.apache.flink.runtime.checkpoint.CheckpointMetaData;
 import org.apache.flink.runtime.checkpoint.CheckpointMetrics;
@@ -38,21 +39,15 @@ import org.apache.flink.runtime.jobgraph.OperatorID;
 import org.apache.flink.runtime.operators.testutils.DummyEnvironment;
 import org.apache.flink.runtime.operators.testutils.MockInputSplitProvider;
 import org.apache.flink.runtime.state.AbstractKeyedStateBackend;
+import org.apache.flink.runtime.state.AbstractStateBackend;
 import org.apache.flink.runtime.state.CheckpointStreamFactory;
-import org.apache.flink.runtime.state.CheckpointStreamFactory.CheckpointStateOutputStream;
-import org.apache.flink.runtime.state.CheckpointedStateScope;
 import org.apache.flink.runtime.state.KeyGroupRange;
 import org.apache.flink.runtime.state.KeyedStateHandle;
-import org.apache.flink.runtime.state.StateBackend;
-import org.apache.flink.runtime.state.StreamStateHandle;
 import org.apache.flink.runtime.state.TestTaskStateManager;
 import org.apache.flink.runtime.state.VoidNamespace;
 import org.apache.flink.runtime.state.VoidNamespaceSerializer;
 import org.apache.flink.runtime.state.memory.MemCheckpointStreamFactory;
 import org.apache.flink.runtime.state.memory.MemoryStateBackend;
-import org.apache.flink.runtime.state.testutils.BackendForTestStream;
-import org.apache.flink.runtime.state.testutils.BackendForTestStream.StreamFactory;
-import org.apache.flink.runtime.state.testutils.TestCheckpointStreamFactory;
 import org.apache.flink.runtime.taskmanager.CheckpointResponder;
 import org.apache.flink.runtime.util.BlockerCheckpointStreamFactory;
 import org.apache.flink.streaming.api.graph.StreamConfig;
@@ -87,7 +82,13 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import static org.mockito.Mockito.spy;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyInt;
+import static org.mockito.Matchers.anyString;
+import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -102,7 +103,7 @@ public class RocksDBAsyncSnapshotTest extends TestLogger {
 	 * Temporary fold for test.
 	 */
 	@Rule
-	public final TemporaryFolder temporaryFolder = new TemporaryFolder();
+	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
 	/**
 	 * This ensures that asynchronous state handles are actually materialized asynchronously.
@@ -210,7 +211,7 @@ public class RocksDBAsyncSnapshotTest extends TestLogger {
 			}
 		}
 
-		task.triggerCheckpoint(new CheckpointMetaData(42, 17), CheckpointOptions.forCheckpointWithDefaultLocation());
+		task.triggerCheckpoint(new CheckpointMetaData(42, 17), CheckpointOptions.forCheckpoint());
 
 		testHarness.processElement(new StreamRecord<>("Wohoo", 0));
 
@@ -243,37 +244,43 @@ public class RocksDBAsyncSnapshotTest extends TestLogger {
 
 		testHarness.setupOutputForSingletonOperatorChain();
 
-		testHarness.configureForKeyedStream(value -> value, BasicTypeInfo.STRING_TYPE_INFO);
+		testHarness.configureForKeyedStream(new KeySelector<String, String>() {
+			@Override
+			public String getKey(String value) throws Exception {
+				return value;
+			}
+		}, BasicTypeInfo.STRING_TYPE_INFO);
 
 		StreamConfig streamConfig = testHarness.getStreamConfig();
 
 		File dbDir = temporaryFolder.newFolder();
 
-		// this is the proper instance that we need to call.
+		BlockingStreamMemoryStateBackend memoryStateBackend = new BlockingStreamMemoryStateBackend();
+
 		BlockerCheckpointStreamFactory blockerCheckpointStreamFactory =
 			new BlockerCheckpointStreamFactory(4 * 1024 * 1024) {
 
 			int count = 1;
 
 			@Override
-			public CheckpointStateOutputStream createCheckpointStateOutputStream(CheckpointedStateScope scope) throws Exception {
+			public MemCheckpointStreamFactory.MemoryCheckpointOutputStream createCheckpointStateOutputStream(
+				long checkpointID,
+				long timestamp) throws Exception {
+
 				// we skip the first created stream, because it is used to checkpoint the timer service, which is
 				// currently not asynchronous.
 				if (count > 0) {
 					--count;
 					return new MemCheckpointStreamFactory.MemoryCheckpointOutputStream(maxSize);
 				} else {
-					return super.createCheckpointStateOutputStream(scope);
+					return super.createCheckpointStateOutputStream(checkpointID, timestamp);
 				}
 			}
 		};
 
-		// to avoid serialization of the above factory instance, we need to pass it in
-		// through a static variable
+		BlockingStreamMemoryStateBackend.blockerCheckpointStreamFactory = blockerCheckpointStreamFactory;
 
-		StateBackend stateBackend = new BackendForTestStream(new StaticForwardFactory(blockerCheckpointStreamFactory));
-
-		RocksDBStateBackend backend = new RocksDBStateBackend(stateBackend);
+		RocksDBStateBackend backend = new RocksDBStateBackend(memoryStateBackend);
 		backend.setDbStoragePath(dbDir.getAbsolutePath());
 
 		streamConfig.setStateBackend(backend);
@@ -310,7 +317,7 @@ public class RocksDBAsyncSnapshotTest extends TestLogger {
 
 		task.triggerCheckpoint(
 			new CheckpointMetaData(42, 17),
-			CheckpointOptions.forCheckpointWithDefaultLocation());
+			CheckpointOptions.forCheckpoint());
 
 		testHarness.processElement(new StreamRecord<>("Wohoo", 0));
 		blockerCheckpointStreamFactory.getWaiterLatch().await();
@@ -347,10 +354,17 @@ public class RocksDBAsyncSnapshotTest extends TestLogger {
 
 		Environment env = new DummyEnvironment("test task", 1, 0);
 
-		final IOException testException = new IOException("Test exception");
-		CheckpointStateOutputStream outputStream = spy(new FailingStream(testException));
+		CheckpointStreamFactory.CheckpointStateOutputStream outputStream = mock(CheckpointStreamFactory.CheckpointStateOutputStream.class);
+		CheckpointStreamFactory checkpointStreamFactory = mock(CheckpointStreamFactory.class);
+		AbstractStateBackend stateBackend = mock(AbstractStateBackend.class);
 
-		RocksDBStateBackend backend = new RocksDBStateBackend((StateBackend) new MemoryStateBackend());
+		final IOException testException = new IOException("Test exception");
+
+		doReturn(checkpointStreamFactory).when(stateBackend).createStreamFactory(any(JobID.class), anyString());
+		doThrow(testException).when(outputStream).write(anyInt());
+		doReturn(outputStream).when(checkpointStreamFactory).createCheckpointStateOutputStream(eq(checkpointId), eq(timestamp));
+
+		RocksDBStateBackend backend = new RocksDBStateBackend(stateBackend);
 
 		backend.setDbStoragePath(temporaryFolder.newFolder().toURI().toString());
 
@@ -374,9 +388,7 @@ public class RocksDBAsyncSnapshotTest extends TestLogger {
 				new ValueStateDescriptor<>("foobar", String.class));
 
 			RunnableFuture<KeyedStateHandle> snapshotFuture = keyedStateBackend.snapshot(
-				checkpointId, timestamp,
-				new TestCheckpointStreamFactory(() -> outputStream),
-				CheckpointOptions.forCheckpointWithDefaultLocation());
+				checkpointId, timestamp, checkpointStreamFactory, CheckpointOptions.forCheckpoint());
 
 			try {
 				FutureUtil.runIfNotDoneAndGet(snapshotFuture);
@@ -416,6 +428,25 @@ public class RocksDBAsyncSnapshotTest extends TestLogger {
 
 	// ------------------------------------------------------------------------
 
+	/**
+	 * Creates us a CheckpointStateOutputStream that blocks write ops on a latch to delay writing of snapshots.
+	 */
+	static class BlockingStreamMemoryStateBackend extends MemoryStateBackend {
+
+		public static volatile BlockerCheckpointStreamFactory blockerCheckpointStreamFactory = null;
+
+		@Override
+		public CheckpointStreamFactory createStreamFactory(JobID jobId, String operatorIdentifier) throws IOException {
+			return blockerCheckpointStreamFactory;
+		}
+
+		@Override
+		public BlockingStreamMemoryStateBackend configure(Configuration config) {
+			// retain this instance, no re-configuration!
+			return this;
+		}
+	}
+
 	private static class AsyncCheckpointOperator
 		extends AbstractStreamOperator<String>
 		implements OneInputStreamOperator<String, String> {
@@ -443,63 +474,6 @@ public class RocksDBAsyncSnapshotTest extends TestLogger {
 					new ValueStateDescriptor<>("count", StringSerializer.INSTANCE));
 
 			state.update(element.getValue());
-		}
-	}
-
-	// ------------------------------------------------------------------------
-	// failing stream
-	// ------------------------------------------------------------------------
-
-	private static class StaticForwardFactory implements StreamFactory {
-
-		static CheckpointStreamFactory factory;
-
-		StaticForwardFactory(CheckpointStreamFactory factory) {
-			StaticForwardFactory.factory = factory;
-		}
-
-		@Override
-		public CheckpointStateOutputStream get() throws Exception {
-			return factory.createCheckpointStateOutputStream(CheckpointedStateScope.EXCLUSIVE);
-		}
-	}
-
-	private static class FailingStream extends CheckpointStateOutputStream {
-
-		private final IOException testException;
-
-		FailingStream(IOException testException) {
-			this.testException = testException;
-		}
-
-		@Override
-		public StreamStateHandle closeAndGetHandle() throws IOException {
-			throw new UnsupportedOperationException();
-		}
-
-		@Override
-		public long getPos() throws IOException {
-			throw new UnsupportedOperationException();
-		}
-
-		@Override
-		public void write(int b) throws IOException {
-			throw testException;
-		}
-
-		@Override
-		public void flush() throws IOException {
-			throw testException;
-		}
-
-		@Override
-		public void sync() throws IOException {
-			throw testException;
-		}
-
-		@Override
-		public void close() throws IOException {
-			throw new UnsupportedOperationException();
 		}
 	}
 }

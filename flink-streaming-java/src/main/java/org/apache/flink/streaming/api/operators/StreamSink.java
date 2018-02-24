@@ -57,9 +57,9 @@ public class StreamSink<IN> extends AbstractUdfStreamOperator<Object, SinkFuncti
 	}
 
 	@Override
-	protected void reportOrForwardLatencyMarker(LatencyMarker marker) {
+	protected void reportOrForwardLatencyMarker(LatencyMarker maker) {
 		// all operators are tracking latencies
-		this.latencyStats.reportLatency(marker);
+		this.latencyGauge.reportLatency(maker, true);
 
 		// sinks don't forward latency markers
 	}

@@ -33,6 +33,7 @@ cache:
   directories:
   - $HOME/.m2
   - $HOME/CACHE
+  - $HOME/CACHE
 dist: trusty
 env:
   global:
